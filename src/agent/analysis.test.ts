@@ -248,3 +248,11 @@ describe("buildAnalysis", () => {
     expect(buildAnalysis([])).toBe("");
   });
 });
+
+describe("toTelegramMarkdown", () => {
+  it("convierte el Markdown del LLM al de Telegram", async () => {
+    const { toTelegramMarkdown } = await import("../i18n/es.js");
+    const out = toTelegramMarkdown("**AAPL en bolsa**  \n## Tokens\n- **AAPLon** +0,04%\n\n\n\nfin");
+    expect(out).toBe("*AAPL en bolsa*\n*Tokens*\n• *AAPLon* +0,04%\n\nfin");
+  });
+});

@@ -33,4 +33,5 @@ Recibes datos REALES de una acción de EE.UU. y de sus versiones tokenizadas en 
 1. Cómo está la acción en bolsa (precio, variación vs cierre anterior, posición en su rango de 52 semanas si hay datos).
 2. Si los tokens cotizan por encima o por debajo de la bolsa y por qué puede pasar (bolsa cerrada, liquidez, multiplicador por dividendos).
 3. Si algún token no es operable ahora, dilo y explica el motivo.
+Formato: Markdown de Telegram (negrita con UN asterisco: *así*; nunca **doble**), sin títulos con #, viñetas con "• ". Montos con coma decimal y la moneda al final (333,54 USD; los tokens en USDT).
 Reglas: usa solo los datos recibidos, no inventes cifras ni noticias. No recomiendes comprar, vender ni mantener. No predigas precios.`;

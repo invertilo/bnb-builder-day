@@ -142,3 +142,18 @@ export function fundamentalsBlock(p: PriceInfo): string | null {
   if (f.dividendYieldPct !== null) rows.push(`• Dividendo anual: ${num(f.dividendYieldPct)}%`);
   return rows.length ? `📊 *Datos de la empresa*\n${rows.join("\n")}` : null;
 }
+
+/**
+ * Normaliza Markdown de un LLM al de Telegram (legacy): **negrita** → *negrita*, sin títulos "#",
+ * viñetas "-" → "•". Los modelos a veces ignoran el formato pedido.
+ */
+export function toTelegramMarkdown(text: string): string {
+  return text
+    .replace(/\*\*([^*\n]+?)\*\*/g, "*$1*")
+    .replace(/__([^_\n]+?)__/g, "*$1*")
+    .replace(/^#{1,6}\s*(.+)$/gm, "*$1*")
+    .replace(/^\s*[-*]\s+/gm, "• ")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}

@@ -130,7 +130,7 @@ export class PrimeraAccion {
       return { text: es.WHAT_IS_TOKENIZED };
     }
     try {
-      const answer = await this.deps.llm.text(EXPLAIN_PROMPT, question);
+      const answer = es.toTelegramMarkdown(await this.deps.llm.text(EXPLAIN_PROMPT, question));
       return { text: `${answer}\n\n_${es.DISCLAIMER}_` };
     } catch (err) {
       console.warn("[explain] LLM:", (err as Error).message);
@@ -188,7 +188,10 @@ export class PrimeraAccion {
     );
     const session = es.sessionLabel(usMarketSession(this.now()));
     try {
-      const analysis = await this.deps.llm.text(ANALYZE_PROMPT, `Acción: ${ticker}\nEstado de la bolsa: ${session}\nDatos: ${data}`);
+      const analysis = es.toTelegramMarkdown(
+        await this.deps.llm.text(ANALYZE_PROMPT, `Acción: ${ticker}\nEstado de la bolsa: ${session}\nDatos: ${data}`),
+      );
+      if (!analysis) return ownAnalysis();
       return { text: `${card}\n\n🧠 *Análisis*\n${analysis}\n\n_${es.DISCLAIMER}_` };
     } catch (err) {
       // Si la IA falla o responde vacío, el análisis lo escribe el agente con los mismos datos.
