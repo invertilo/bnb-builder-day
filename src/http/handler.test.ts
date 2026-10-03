@@ -85,6 +85,18 @@ describe("handler HTTP", () => {
     expect(updates).toEqual([{ update_id: 7 }]); // ya procesado cuando Telegram recibe el 200
   });
 
+  it("webhook de Telegram: si el procesamiento se cuelga, responde 200 al llegar al tope", async () => {
+    const err = console.error;
+    console.error = () => {};
+    try {
+      const h = createHandler({ ...deps, telegramBudgetMs: 30, handleTelegramUpdate: () => new Promise(() => {}) });
+      const res = await h(req("/api/telegram", { method: "POST", body: "{}", headers: { "x-telegram-bot-api-secret-token": WEBHOOK_SECRET } }));
+      expect(res.status).toBe(200);
+    } finally {
+      console.error = err;
+    }
+  });
+
   it("webhook de Telegram: si el procesamiento falla igual responde 200 (Telegram no reintenta en bucle)", async () => {
     const err = console.error;
     console.error = () => {};

@@ -15,6 +15,8 @@ export interface HttpDeps {
   /** Contador con ventana para rate limit. */
   hit(key: string, windowSec: number): Promise<number>;
   secrets: { telegramWebhook?: string; cron?: string };
+  /** Tiempo máximo para procesar un update de Telegram (por defecto 240 s). */
+  telegramBudgetMs?: number;
   limits: { perMinute: number; perDay: number };
   now?: () => Date;
 }
@@ -85,10 +87,19 @@ export function createHandler(deps: HttpDeps): (req: Request) => Promise<Respons
     // Procesamos ANTES de responder: el runtime Bun de Vercel congela la función apenas responde
     // (waitUntil no la mantiene viva), así que el trabajo en segundo plano se perdía y el bot no contestaba.
     // Si una compra tarda y Telegram reintenta, la confirmación ya se tomó (GETDEL) y no se ejecuta dos veces.
+    // Tope de 240 s (la función tiene 300): si algo se cuelga, respondemos igual y queda en los logs.
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      await deps.handleTelegramUpdate(update);
+      await Promise.race([
+        deps.handleTelegramUpdate(update),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error("procesar el update tardó más de 240 s")), deps.telegramBudgetMs ?? 240_000);
+        }),
+      ]);
     } catch (err) {
       console.error("[telegram]", err);
+    } finally {
+      clearTimeout(timer);
     }
     return json({ ok: true });
   }

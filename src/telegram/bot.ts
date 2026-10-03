@@ -11,7 +11,11 @@ export interface BotOptions {
 }
 
 export function createBot(agent: PrimeraAccion, opts: BotOptions): Bot {
-  const bot = new Bot(opts.token);
+  // fetch nativo (no node-fetch + https.Agent): en el runtime Bun de Vercel las llamadas por node:https se colgaban.
+  // Y un límite de 20 s por llamada a Telegram (por defecto grammY espera hasta 500 s).
+  const bot = new Bot(opts.token, {
+    client: { fetch: globalThis.fetch as never, baseFetchConfig: {}, timeoutSeconds: 20 },
+  });
 
   bot.catch((err) => console.error("[telegram]", err.error));
 
