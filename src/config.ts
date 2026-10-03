@@ -17,10 +17,12 @@ const ConfigSchema = z.object({
   // Vercel Cron manda "Authorization: Bearer <CRON_SECRET>".
   CRON_SECRET: z.string().min(16, "CRON_SECRET debe tener al menos 16 caracteres").optional(),
 
-  // LLM compatible con OpenAI (AgentRouter por defecto).
-  LLM_BASE_URL: z.string().url().default("https://agentrouter.org/v1"),
+  // LLM compatible con OpenAI (OpenRouter por defecto: permite uso desde servidores).
+  LLM_BASE_URL: z.string().url().default("https://openrouter.ai/api/v1"),
   LLM_API_KEY: z.string().optional(),
-  LLM_MODEL: z.string().default("deepseek-v4-flash"),
+  LLM_MODEL: z.string().default("deepseek/deepseek-v4-flash"),
+  // OpenRouter muestra la app con estos datos (encabezados HTTP-Referer y X-Title).
+  LLM_APP_URL: z.string().url().default("https://primera-accion.vercel.app"),
 
   // Binance Web3 API (Trading / Market / Wallet / Transaction). Sin clave el bot funciona en modo solo lectura.
   BINANCE_API_KEY: z.string().optional(),

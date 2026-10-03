@@ -8,8 +8,8 @@ const example = parseEnv(readFileSync(new URL("../.env.example", import.meta.url
 describe("loadConfig", () => {
   it(".env.example + token de Telegram = configuración válida en modo solo lectura", () => {
     const cfg = loadConfig({ ...example, TELEGRAM_BOT_TOKEN: "123:abc" });
-    expect(cfg.LLM_MODEL).toBe("deepseek-v4-flash");
-    expect(cfg.LLM_BASE_URL).toBe("https://agentrouter.org/v1");
+    expect(cfg.LLM_MODEL).toBe("deepseek/deepseek-v4-flash");
+    expect(cfg.LLM_BASE_URL).toBe("https://openrouter.ai/api/v1");
     expect(cfg.ISSUERS).toEqual(["ondo", "bstocks"]);
     expect(cfg.AGENT_PRIVATE_KEY).toBeUndefined();
     expect(cfg.LLM_API_KEY).toBeUndefined();

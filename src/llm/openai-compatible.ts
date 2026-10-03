@@ -2,12 +2,15 @@ import type { FetchLike } from "../binance/public.js";
 import type { Llm } from "../ports.js";
 
 export interface LlmOptions {
-  /** Ej. https://agentrouter.org/v1 (los modelos no Claude de AgentRouter usan el formato OpenAI con /v1). */
+  /** Ej. https://openrouter.ai/api/v1 */
   baseUrl: string;
   apiKey: string;
-  /** Debe coincidir exactamente con la página de precios del proveedor, ej. "deepseek-v4-flash". */
+  /** ID exacto del modelo en el proveedor, ej. "deepseek/deepseek-v4-flash" en OpenRouter. */
   model: string;
   timeoutMs?: number;
+  /** Atribución de la app en OpenRouter (opcional). */
+  appUrl?: string;
+  appName?: string;
 }
 
 type ContentPart = { type?: string; text?: string };
@@ -54,6 +57,11 @@ export class OpenAiCompatibleLlm implements Llm {
     }
 
     const raw = await res.text();
+    // Algunos proveedores (ej. AgentRouter) responden 200 con una página HTML de su firewall cuando
+    // bloquean la llamada (IPs de servidores o clientes no aprobados). No es una respuesta del modelo.
+    if (/text\/html/i.test(res.headers.get("content-type") ?? "") || /aliyun_waf|<!doctype html/i.test(raw.slice(0, 500))) {
+      throw new Error("El proveedor de IA bloqueó la llamada desde este servidor (respondió con su firewall, no con el modelo)");
+    }
     let data: ChatResponse = {};
     try {
       data = JSON.parse(raw) as ChatResponse;
@@ -78,7 +86,12 @@ export class OpenAiCompatibleLlm implements Llm {
   private post(body: unknown): Promise<Response> {
     return this.fetchImpl(`${this.opts.baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.opts.apiKey}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.opts.apiKey}`,
+        ...(this.opts.appUrl ? { "HTTP-Referer": this.opts.appUrl } : {}),
+        ...(this.opts.appName ? { "X-Title": this.opts.appName } : {}),
+      },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(this.opts.timeoutMs ?? 25_000),
     });

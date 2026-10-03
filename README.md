@@ -72,7 +72,7 @@ _(Ejemplo ilustrativo: la cotización y la ruta varían.)_
 | Ver portafolio e historial | `portafolio` · `historial` |
 | Aprender | `¿qué es una acción tokenizada?` |
 
-Las frases frecuentes se entienden con reglas (rápido y gratis). Lo demás lo interpreta un LLM (**`deepseek-v4-flash` vía AgentRouter**, compatible con OpenAI), que siempre devuelve una orden estructurada y validada, nunca una transacción.
+Las frases frecuentes se entienden con reglas (rápido y gratis). Lo demás lo interpreta un LLM (**`deepseek/deepseek-v4-flash` vía OpenRouter**, compatible con OpenAI), que siempre devuelve una orden estructurada y validada, nunca una transacción.
 
 ### Precios en tiempo real
 
@@ -117,7 +117,7 @@ flowchart LR
 - **`src/ports.ts`**: interfaces `MarketData`, `Trader` y `Llm`. El agente no depende de un proveedor concreto, así que se prueba con un mercado simulado y se conecta a las APIs reales sin tocar la lógica.
 - **`src/binance/`**: clientes de Binance. `public.ts` (catálogo y precios sin clave), `auth.ts` (firma HMAC), `market.ts` y `trader.ts`. Ondo y bStocks se ejecutan como **orden RFQ firmada (EIP-712)** y xStocks como swap normal. Antes de firmar se aprueba el gasto justo, se simula, se envía con **protección MEV** y se verifica el mínimo garantizado.
 - **`src/stocks/quotes.ts`**: precio de la acción en bolsa (Yahoo Finance con respaldo de Binance).
-- **`src/llm/`**: cliente compatible con OpenAI (AgentRouter + `deepseek-v4-flash`).
+- **`src/llm/`**: cliente compatible con OpenAI (OpenRouter + `deepseek/deepseek-v4-flash`).
 - **`src/telegram/`**: el bot (botones de confirmación, scheduler de compras programadas).
 - **`studio/`**: el agente de **BNB Agent Studio** (generado con `bag init`). Expone el _análisis pre-compra_ por **A2A** y por **`/x402` gratis**, para que otros agentes de IA lo consuman. Tiene identidad onchain **ERC-8004** y firma con su propia wallet en código fijo, nunca desde el LLM. Detalles en la [guía de Agent Studio](docs/AGENT_STUDIO.md).
 
@@ -130,7 +130,7 @@ flowchart LR
 - [x] Bot de Telegram con confirmación por botones y compras programadas (DCA)
 - [x] Catálogo real de acciones tokenizadas en BSC (Ondo y bStocks) y precios onchain en vivo
 - [x] Precio de la acción en bolsa en tiempo real (Yahoo Finance + respaldo de Binance)
-- [x] IA con `deepseek-v4-flash` vía AgentRouter: interpreta mensajes y analiza acciones con datos reales
+- [x] IA con `deepseek/deepseek-v4-flash` vía OpenRouter: interpreta mensajes y analiza acciones con datos reales
 - [x] Trading con la Binance Web3 API: cotización, aprobación, swap u orden RFQ, simulación, envío con protección MEV
 - [x] Portafolio leído onchain (Multicall3 sobre todo el catálogo)
 - [x] Agente de BNB Agent Studio en `studio/` con nuestro análisis en `runWork`, probado local con `bag dev` y `/x402` ([guía](docs/AGENT_STUDIO.md))
@@ -159,7 +159,7 @@ Completa `.env`:
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | Token del bot (créalo con [@BotFather](https://t.me/BotFather)) | Sí |
 | `TELEGRAM_TRADER_IDS` | IDs de Telegram que pueden operar (el bot te dice tu ID) | Para operar |
-| `LLM_API_KEY` | Clave de AgentRouter para `deepseek-v4-flash` | Para la IA |
+| `LLM_API_KEY` | Clave de [OpenRouter](https://openrouter.ai/keys) para `deepseek/deepseek-v4-flash` | Para la IA |
 | `BINANCE_API_KEY` / `BINANCE_API_SECRET` | [Binance Web3 dev portal](https://web3.binance.com/en/dev-portal) con Trading, Market, Wallet y Transaction | Para operar |
 | `AGENT_PRIVATE_KEY` | Wallet del agente. Créala con `npm run wallet:new` | Para operar |
 
@@ -214,7 +214,7 @@ src/
 │   ├── market.ts       # catálogo, precio onchain vs bolsa, estado del emisor
 │   ├── public.ts       # endpoints públicos de Binance Wallet
 │   └── trader.ts       # cotización, aprobación, swap / RFQ, simulación, portafolio
-├── llm/openai-compatible.ts  # AgentRouter · deepseek-v4-flash
+├── llm/openai-compatible.ts  # OpenRouter · deepseek/deepseek-v4-flash
 ├── stocks/quotes.ts    # precio en bolsa en tiempo real
 ├── studio/run-work.ts  # análisis pre-compra para BNB Agent Studio
 ├── wallet/signer.ts    # firma local (viem)

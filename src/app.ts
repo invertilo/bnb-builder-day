@@ -74,7 +74,13 @@ export function buildApp(cfg: Config, env: NodeJS.ProcessEnv = process.env): App
   }
 
   const llm = cfg.LLM_API_KEY
-    ? new OpenAiCompatibleLlm({ baseUrl: cfg.LLM_BASE_URL, apiKey: cfg.LLM_API_KEY, model: cfg.LLM_MODEL })
+    ? new OpenAiCompatibleLlm({
+        baseUrl: cfg.LLM_BASE_URL,
+        apiKey: cfg.LLM_API_KEY,
+        model: cfg.LLM_MODEL,
+        appUrl: cfg.LLM_APP_URL,
+        appName: "Primera Accion",
+      })
     : null;
 
   const store = buildStore(cfg, env);

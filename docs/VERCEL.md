@@ -52,7 +52,7 @@ Lo encontramos en el primer deploy real (3 oct):
    | `TELEGRAM_WEBHOOK_SECRET` | Para el bot | `openssl rand -hex 32` |
    | `TELEGRAM_TRADER_IDS` | Para operar | IDs separados por coma |
    | `CRON_SECRET` | Para el DCA | `openssl rand -hex 32` |
-   | `LLM_API_KEY` | Para la IA | AgentRouter (`LLM_MODEL=deepseek-v4-flash` es el valor por defecto) |
+   | `LLM_API_KEY` | Para la IA | Clave de [OpenRouter](https://openrouter.ai/keys) (`LLM_MODEL=deepseek/deepseek-v4-flash` es el valor por defecto) |
    | `BINANCE_API_KEY` / `BINANCE_API_SECRET` | Para operar | Binance Web3 dev portal |
    | `AGENT_PRIVATE_KEY` | Para operar | Wallet caliente del agente: solo montos chicos |
 
