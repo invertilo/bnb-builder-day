@@ -7,6 +7,7 @@ import type { Basket, PlannedTrade, StockToken } from "../domain/types.js";
 import * as es from "../i18n/es.js";
 import type { Llm, MarketData, PriceInfo, Quote, Trader } from "../ports.js";
 import type { StateStore } from "../store.js";
+import { buildAnalysis } from "./analysis.js";
 import { IntentSchema, parseIntentRules, resolveTicker, type Intent } from "./intents.js";
 import { ANALYZE_PROMPT, EXPLAIN_PROMPT, INTENT_PROMPT } from "./prompts.js";
 
@@ -161,7 +162,12 @@ export class PrimeraAccion {
     const prices = await this.prices(ticker);
     const card = es.priceCard(prices, this.now());
     const facts = es.fundamentalsBlock(prices[0]!);
-    if (!this.deps.llm) return { text: `${card}${facts ? `\n\n${facts}` : ""}` };
+    // Análisis propio del agente: reglas sobre los datos en vivo, sin LLM. Se usa si no hay IA o si falla.
+    const ownAnalysis = () => {
+      const text = buildAnalysis(prices, this.now());
+      return { text: `${card}${facts ? `\n\n${facts}` : ""}${text ? `\n\n🧠 *Análisis*\n${text}` : ""}\n\n_${es.DISCLAIMER}_` };
+    };
+    if (!this.deps.llm) return ownAnalysis();
 
     const data = JSON.stringify(
       prices.map((p) => ({
@@ -185,9 +191,9 @@ export class PrimeraAccion {
       const analysis = await this.deps.llm.text(ANALYZE_PROMPT, `Acción: ${ticker}\nEstado de la bolsa: ${session}\nDatos: ${data}`);
       return { text: `${card}\n\n🧠 *Análisis*\n${analysis}\n\n_${es.DISCLAIMER}_` };
     } catch (err) {
-      // Si la IA falla, los datos reales igual sirven: no tumbamos la respuesta.
+      // Si la IA falla o responde vacío, el análisis lo escribe el agente con los mismos datos.
       console.warn("[analyze] LLM:", (err as Error).message);
-      return { text: `${card}${facts ? `\n\n${facts}` : ""}\n\n_El análisis con IA no está disponible en este momento._` };
+      return ownAnalysis();
     }
   }
 

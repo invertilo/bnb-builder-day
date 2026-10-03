@@ -188,7 +188,7 @@ describe("PrimeraAccion", () => {
     try {
       const reply = await failing.handle(STRANGER, "analiza apple", false);
       expect(reply.text).toContain("En bolsa");
-      expect(reply.text).toContain("no está disponible");
+      expect(reply.text).toContain("🧠 *Análisis*"); // lo escribe el agente sin LLM
     } finally {
       console.warn = warn;
     }

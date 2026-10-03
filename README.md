@@ -62,7 +62,7 @@ _(Ejemplo ilustrativo: la cotización y la ruta varían.)_
 | Función | Ejemplo |
 |---|---|
 | Precio **en tiempo real de la bolsa** (incluye pre y post mercado) frente al precio de cada token | `precio de tesla` |
-| Análisis con IA usando datos reales (sin recomendar compras) | `analiza nvidia` |
+| Análisis con datos reales: lo escribe la IA y, si no está disponible, el propio agente con reglas (sin recomendar compras) | `analiza nvidia` |
 | Comprar y vender con USDT | `compra 10 de nvidia` · `vende todo mi apple` |
 | Elegir el mejor emisor automáticamente | Si AAPL existe en bStocks, Ondo y xStocks, cotiza en los tres y elige el de mejor precio |
 | Canastas temáticas armadas por ti | `canasta chips NVDA 40 AMD 30 TSM 30` |
@@ -136,7 +136,7 @@ flowchart LR
 - [x] Agente de BNB Agent Studio en `studio/` con nuestro análisis en `runWork`, probado local con `bag dev` y `/x402` ([guía](docs/AGENT_STUDIO.md))
 - [x] CI (tests del bot + compilación del agente de Agent Studio) y Dockerfile para el bot
 - [x] Agente listo para **Vercel con runtime Bun**: webhook de Telegram, Upstash Redis, Vercel Cron, API `/api/analyze` y página de demo ([guía](docs/VERCEL.md))
-- [x] 96 tests automáticos
+- [x] 112 tests automáticos
 - [ ] Probar con la API key de Binance y una wallet con fondos (primera compra real en mainnet)
 - [ ] Deploy del agente de Agent Studio (trial de 48 h) y registro ERC-8004
 - [ ] Deploy en Vercel (cuenta del equipo) y demo en video
@@ -168,7 +168,7 @@ Sin las claves de Binance o sin wallet, el bot funciona en **modo solo lectura**
 ```bash
 npm run check NVDA 25   # diagnóstico: catálogo, precio en bolsa, IA, firma Binance, wallet y cotización (no ejecuta nada)
 npm run dev             # levanta el bot de Telegram
-npm test                # 96 tests
+npm test                # 112 tests
 ```
 
 Para operar, la wallet del agente necesita USDT (Ondo pide órdenes de ~20 USD como mínimo) y un poco de BNB para gas, en BNB Smart Chain.
