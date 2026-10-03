@@ -1,7 +1,7 @@
 import { GrammyError } from "grammy";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
-import { createBot, startDcaScheduler } from "./telegram/bot.js";
+import { BOT_COMMANDS, createBot, startDcaScheduler } from "./telegram/bot.js";
 
 try {
   process.loadEnvFile();
@@ -17,7 +17,7 @@ try {
   process.exit(1);
 }
 const app = buildApp(cfg);
-const bot = createBot(app.agent, { token: cfg.TELEGRAM_BOT_TOKEN, traders: cfg.TELEGRAM_TRADER_IDS });
+const bot = createBot(app.agent, { token: cfg.TELEGRAM_BOT_TOKEN!, traders: cfg.TELEGRAM_TRADER_IDS });
 
 try {
   await bot.init();
@@ -27,16 +27,7 @@ try {
   process.exit(1);
 }
 
-await bot.api.setMyCommands([
-  { command: "precio", description: "Precio en bolsa y de los tokens. Ej: /precio apple" },
-  { command: "analizar", description: "Análisis con IA de una acción. Ej: /analizar nvidia" },
-  { command: "comprar", description: "Comprar con USDT. Ej: /comprar 25 tesla" },
-  { command: "vender", description: "Vender. Ej: /vender todo apple" },
-  { command: "portafolio", description: "Tus acciones y saldo" },
-  { command: "canastas", description: "Tus canastas y plantillas" },
-  { command: "historial", description: "Últimas operaciones" },
-  { command: "ayuda", description: "Qué puedo hacer" },
-]);
+await bot.api.setMyCommands(BOT_COMMANDS);
 
 const timer = startDcaScheduler(bot, app.agent);
 

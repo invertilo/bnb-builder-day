@@ -135,10 +135,11 @@ flowchart LR
 - [x] Portafolio leído onchain (Multicall3 sobre todo el catálogo)
 - [x] Agente de BNB Agent Studio en `studio/` con nuestro análisis en `runWork`, probado local con `bag dev` y `/x402` ([guía](docs/AGENT_STUDIO.md))
 - [x] CI (tests del bot + compilación del agente de Agent Studio) y Dockerfile para el bot
-- [x] 77 tests automáticos
+- [x] Agente listo para **Vercel con runtime Bun**: webhook de Telegram, Upstash Redis, Vercel Cron, API `/api/analyze` y página de demo ([guía](docs/VERCEL.md))
+- [x] 96 tests automáticos
 - [ ] Probar con la API key de Binance y una wallet con fondos (primera compra real en mainnet)
 - [ ] Deploy del agente de Agent Studio (trial de 48 h) y registro ERC-8004
-- [ ] Deploy del bot y demo en video
+- [ ] Deploy en Vercel (cuenta del equipo) y demo en video
 - [ ] Reporte de Developer Experience ([`DX_LOG.md`](DX_LOG.md))
 
 ## Cómo correrlo
@@ -167,12 +168,25 @@ Sin las claves de Binance o sin wallet, el bot funciona en **modo solo lectura**
 ```bash
 npm run check NVDA 25   # diagnóstico: catálogo, precio en bolsa, IA, firma Binance, wallet y cotización (no ejecuta nada)
 npm run dev             # levanta el bot de Telegram
-npm test                # 77 tests
+npm test                # 96 tests
 ```
 
 Para operar, la wallet del agente necesita USDT (Ondo pide órdenes de ~20 USD como mínimo) y un poco de BNB para gas, en BNB Smart Chain.
 
-### Deploy del bot
+### Deploy en Vercel (recomendado)
+
+El agente corre en Vercel como una función con `Bun.serve()` ([guía de Bun](https://bun.com/guides/deployment/vercel)): página de demo, API de análisis para otros agentes, webhook de Telegram y compras programadas con Vercel Cron. El estado vive en Upstash Redis.
+
+```bash
+bunx vercel login && bunx vercel link
+# En el dashboard: conectar Upstash Redis y cargar las variables de entorno (ver docs/VERCEL.md)
+bunx vercel deploy --prod
+npm run webhook:set -- https://tu-proyecto.vercel.app
+```
+
+Para probarlo local con Bun: `bun install && bun run src/server.ts` → http://localhost:3000. Todos los pasos están en [docs/VERCEL.md](docs/VERCEL.md).
+
+### Deploy del bot como proceso (Docker)
 
 El bot es un proceso que tiene que quedar siempre encendido (long polling de Telegram, sin puertos abiertos). Con Docker:
 
@@ -205,9 +219,12 @@ src/
 ├── studio/run-work.ts  # análisis pre-compra para BNB Agent Studio
 ├── wallet/signer.ts    # firma local (viem)
 ├── scripts/            # check (diagnóstico) y new-wallet
+├── http/               # handler HTTP (página, /api/analyze, webhook, cron) y página de demo
+├── server.ts           # entrada para Vercel: Bun.serve()
+├── store-redis.ts      # estado en Upstash Redis (Vercel)
 ├── app.ts              # arma todo según el .env (con modo solo lectura)
 ├── config.ts           # validación del .env
-├── index.ts            # entrada del bot
+├── index.ts            # entrada del bot en modo polling (local / Docker)
 ├── domain/
 │   ├── baskets.ts      # canastas y pesos
 │   ├── market-hours.ts # horario y feriados de la bolsa de EE.UU.
@@ -221,6 +238,8 @@ src/
 studio/                 # agente de BNB Agent Studio (bag init) con nuestro runWork
 scripts/studio-sync.mjs # copia src/ al agente de Agent Studio antes de dev/deploy
 docs/AGENT_STUDIO.md    # guía de Agent Studio
+docs/VERCEL.md          # guía de Vercel
+vercel.json             # runtime Bun 1.4 + cron del DCA
 Dockerfile              # imagen del bot
 ```
 

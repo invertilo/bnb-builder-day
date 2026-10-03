@@ -1,0 +1,71 @@
+# Primera Acción en Vercel (runtime Bun)
+
+El agente corre en Vercel como una sola función con `Bun.serve()` (`src/server.ts`), siguiendo la [guía de Bun para Vercel](https://bun.com/guides/deployment/vercel): `bunVersion` en `vercel.json`, `bun.lock` y el servidor en `src/server.ts`.
+
+| Ruta | Para qué |
+|---|---|
+| `GET /` | Página para probar el análisis sin Telegram (sirve como link de demo para el jurado) |
+| `POST /api/analyze` · `GET /api/analyze?prompt=` | Análisis pre-compra para personas y **otros agentes** (`{"prompt":"NVDA 25"}` → `{"result": "…"}`) con CORS y rate limit |
+| `POST /api/telegram` | Webhook del bot. Valida `X-Telegram-Bot-Api-Secret-Token`, responde 200 al instante y procesa con `waitUntil` |
+| `GET /api/cron/dca` | Compras programadas (DCA), llamado por Vercel Cron con `Authorization: Bearer $CRON_SECRET` |
+| `GET /api/info` · `GET /health` | Estado del agente |
+
+## Qué cambia respecto del bot local
+
+| Local (`npm run dev`, Docker) | Vercel |
+|---|---|
+| Telegram por *long polling* | Telegram por **webhook** con secreto |
+| Confirmaciones pendientes en memoria | En **Upstash Redis** con vencimiento. `GETDEL` evita que un doble clic ejecute dos veces aunque caiga en otra instancia |
+| Estado en `data/state.json` | Canastas, DCA e historial en Redis |
+| DCA con `setInterval` | **Vercel Cron**, una vez por día (`0 14 * * *` = 10:00 en Bolivia) |
+
+El webhook responde enseguida para que Telegram no reintente mientras se ejecuta una compra (una orden RFQ puede tardar más de un minuto). El trabajo sigue en segundo plano con `waitUntil` de `@vercel/functions`, dentro del tiempo máximo de la función (300 s por defecto con Fluid compute).
+
+## Deploy paso a paso
+
+1. **Proyecto en Vercel.** Importa el repo desde el dashboard (New Project → GitHub → `bnb-builder-day`) o usa la CLI:
+   ```bash
+   bunx vercel login
+   bunx vercel link
+   ```
+2. **Redis.** En el proyecto: Storage → Marketplace → **Upstash Redis** → Connect. Vercel agrega `KV_REST_API_URL` y `KV_REST_API_TOKEN`.
+3. **Variables de entorno** (Settings → Environment Variables, entorno Production):
+
+   | Variable | Obligatoria | Nota |
+   |---|---|---|
+   | `TELEGRAM_BOT_TOKEN` | Para el bot | De @BotFather |
+   | `TELEGRAM_WEBHOOK_SECRET` | Para el bot | `openssl rand -hex 32` |
+   | `TELEGRAM_TRADER_IDS` | Para operar | IDs separados por coma |
+   | `CRON_SECRET` | Para el DCA | `openssl rand -hex 32` |
+   | `LLM_API_KEY` | Para la IA | AgentRouter (`LLM_MODEL=deepseek-v4-flash` es el valor por defecto) |
+   | `BINANCE_API_KEY` / `BINANCE_API_SECRET` | Para operar | Binance Web3 dev portal |
+   | `AGENT_PRIVATE_KEY` | Para operar | Wallet caliente del agente: solo montos chicos |
+
+   Sin las variables de trading, el deploy funciona en **modo solo lectura** (página, análisis y precios).
+4. **Deploy:**
+   ```bash
+   bunx vercel deploy --prod
+   ```
+5. **Conectar el bot al deploy** (desde tu máquina, con el mismo `TELEGRAM_WEBHOOK_SECRET` en tu `.env`):
+   ```bash
+   npm run webhook:set -- https://tu-proyecto.vercel.app
+   ```
+   Para volver al modo local (`npm run dev`): `npm run webhook:set -- --delete`. Un bot no puede usar webhook y polling a la vez.
+
+## Probar local con Bun
+
+```bash
+bun install
+bun run src/server.ts           # o: npm run web
+curl -X POST localhost:3000/api/analyze -H 'Content-Type: application/json' -d '{"prompt":"NVDA 25"}'
+```
+
+Probado con Bun 1.4.2: página, `/health`, `/api/info` y `/api/analyze` con datos reales. El webhook responde 503 sin secreto configurado y el cron responde 401 sin autorización.
+
+## Límites y avisos
+
+- **Cron en plan Hobby:** una vez por día y con horario aproximado dentro de la hora. Como el DCA se mide en días, alcanza.
+- **`/api/analyze` es público y usa el LLM:** por defecto acepta 10 consultas por minuto por IP y 500 por día en total (`ANALYZE_RATE_LIMIT_PER_MIN`, `ANALYZE_DAILY_LIMIT`).
+- **La clave de la wallet queda en Vercel** (cifrada, pero es una wallet caliente en la nube). Úsenla solo con montos chicos.
+- El runtime Bun de Vercel está en **beta**.
+- `bun.lock` y `package-lock.json` conviven: Vercel instala con Bun, mientras CI y Docker usan npm. Si cambian dependencias, actualicen los dos (`npm install` y `bun install`).

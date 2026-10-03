@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Side, StockToken } from "../domain/types.js";
 import type { MarketData, Portfolio, PriceInfo, Quote, Trader } from "../ports.js";
-import { Store } from "../store.js";
+import { FileStore } from "../store.js";
 import { PrimeraAccion } from "./service.js";
 
 const TOKENS: StockToken[] = [
@@ -82,7 +82,7 @@ beforeEach(async () => {
     market,
     trader,
     llm: null,
-    store: new Store(join(dir, "state.json")),
+    store: new FileStore(join(dir, "state.json")),
     policy: { maxTradeUsd: 100, maxDailyUsd: 150, maxSlippageBps: 100, maxReferenceGapBps: 200 },
     minTradeUsd: 1,
     now,

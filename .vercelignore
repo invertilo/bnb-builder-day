@@ -1,0 +1,8 @@
+/studio
+/data
+/dist
+/.github
+/Dockerfile
+/.dockerignore
+/docs
+*.log

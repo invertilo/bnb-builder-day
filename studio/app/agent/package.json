@@ -20,7 +20,8 @@
     "ai": "^7.0.29",
     "express": "^5.1.0",
     "@a2a-js/sdk": ">=0.3.14 <1.0",
-    "viem": "^2.57.2"
+    "viem": "^2.57.2",
+    "@upstash/redis": "^1.39.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

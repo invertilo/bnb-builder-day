@@ -56,8 +56,9 @@ export const CLOSED_MARKET_WARNING =
 export const usd = (n: number) =>
   `${n.toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
 
+// `|| 0` evita mostrar "-0,00%" cuando la brecha redondea a cero.
 const pctNumber = (bps: number) =>
-  (bps / 100).toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  (bps / 100 || 0).toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const pct = (bps: number) => `${pctNumber(bps)}%`;
 

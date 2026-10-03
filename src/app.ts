@@ -8,7 +8,8 @@ import type { Config } from "./config.js";
 import { OpenAiCompatibleLlm } from "./llm/openai-compatible.js";
 import type { Llm, MarketData, Trader } from "./ports.js";
 import { BinanceStockQuotes, FallbackQuotes, YahooQuotes } from "./stocks/quotes.js";
-import { Store } from "./store.js";
+import { FileStore, type StateStore } from "./store.js";
+import { RedisStore } from "./store-redis.js";
 import { bscPublicClient, LocalSigner } from "./wallet/signer.js";
 
 export const READ_ONLY_REASON =
@@ -30,6 +31,7 @@ export class ReadOnlyTrader implements Trader {
 
 export interface App {
   agent: PrimeraAccion;
+  store: StateStore;
   market: MarketData;
   trader: Trader;
   llm: Llm | null;
@@ -37,7 +39,18 @@ export interface App {
   walletAddress: string | null;
 }
 
-export function buildApp(cfg: Config): App {
+/** Redis si está configurado (Vercel); si no, archivo JSON local. */
+export function buildStore(cfg: Config, env: NodeJS.ProcessEnv = process.env): StateStore {
+  const redis = RedisStore.fromEnv(env);
+  if (redis) return redis;
+  if (env.VERCEL) {
+    console.warn("[store] Sin Redis en Vercel: uso /tmp, que no se comparte entre instancias. Conecta Upstash Redis desde el Marketplace de Vercel.");
+    return new FileStore("/tmp/primera-accion/state.json");
+  }
+  return new FileStore(cfg.DATA_PATH);
+}
+
+export function buildApp(cfg: Config, env: NodeJS.ProcessEnv = process.env): App {
   const pub = new BinancePublic();
   const stockQuotes =
     cfg.STOCK_PRICE_SOURCE === "yahoo"
@@ -64,11 +77,12 @@ export function buildApp(cfg: Config): App {
     ? new OpenAiCompatibleLlm({ baseUrl: cfg.LLM_BASE_URL, apiKey: cfg.LLM_API_KEY, model: cfg.LLM_MODEL })
     : null;
 
+  const store = buildStore(cfg, env);
   const agent = new PrimeraAccion({
     market,
     trader,
     llm,
-    store: new Store(cfg.DATA_PATH),
+    store,
     policy: {
       maxTradeUsd: cfg.MAX_TRADE_USD,
       maxDailyUsd: cfg.MAX_DAILY_USD,
@@ -78,5 +92,5 @@ export function buildApp(cfg: Config): App {
     minTradeUsd: cfg.MIN_TRADE_USD,
   });
 
-  return { agent, market, trader, llm, tradingEnabled, walletAddress };
+  return { agent, store, market, trader, llm, tradingEnabled, walletAddress };
 }

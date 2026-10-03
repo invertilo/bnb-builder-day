@@ -6,7 +6,7 @@ import { planRebalance } from "../domain/rebalance.js";
 import type { Basket, PlannedTrade, StockToken } from "../domain/types.js";
 import * as es from "../i18n/es.js";
 import type { Llm, MarketData, PriceInfo, Quote, Trader } from "../ports.js";
-import type { Store } from "../store.js";
+import type { StateStore } from "../store.js";
 import { IntentSchema, parseIntentRules, resolveTicker, type Intent } from "./intents.js";
 import { ANALYZE_PROMPT, EXPLAIN_PROMPT, INTENT_PROMPT } from "./prompts.js";
 
@@ -30,6 +30,9 @@ const PUBLIC_INTENTS = new Set<Intent["kind"]>(["price", "analyze", "explain", "
 
 const round = (n: number, digits = 4) => Math.round(n * 10 ** digits) / 10 ** digits;
 
+/** Las operaciones pendientes se borran solas pasado este tiempo. */
+const PENDING_TTL_SEC = 300;
+
 /** Cotizaciones más viejas que esto se vuelven a pedir antes de ejecutar. */
 const QUOTE_TTL_MS = 60_000;
 
@@ -37,14 +40,13 @@ export interface AgentDeps {
   market: MarketData;
   trader: Trader;
   llm: Llm | null;
-  store: Store;
+  store: StateStore;
   policy: TradePolicy;
   minTradeUsd: number;
   now?: () => Date;
 }
 
 export class PrimeraAccion {
-  private pending = new Map<string, Pending>();
   private readonly now: () => Date;
 
   constructor(private readonly deps: AgentDeps) {
@@ -378,7 +380,7 @@ export class PrimeraAccion {
     if (session !== "open") warnings.add(es.CLOSED_MARKET_WARNING);
 
     const id = randomUUID().slice(0, 8);
-    this.pending.set(id, { userId, quotes, createdAt: Date.now(), label });
+    await this.deps.store.savePending(userId, id, { userId, quotes, createdAt: Date.now(), label } satisfies Pending, PENDING_TTL_SEC);
 
     return {
       text: [
@@ -429,9 +431,9 @@ export class PrimeraAccion {
   }
 
   async confirm(userId: number, id: string): Promise<Reply> {
-    const p = this.pending.get(id);
+    // takePending lee y borra en un paso: un segundo clic (o un reintento) no vuelve a ejecutar.
+    const p = await this.deps.store.takePending<Pending>(userId, id);
     if (!p || p.userId !== userId) return { text: "Esa operación ya no está disponible." };
-    this.pending.delete(id);
 
     if (Date.now() - p.createdAt > QUOTE_TTL_MS) {
       return { text: "⏱️ La cotización venció (más de 60 s). Vuelve a pedir la operación para cotizar de nuevo." };
@@ -459,9 +461,8 @@ export class PrimeraAccion {
     return { text: `*${p.label}*\n${done.join("\n")}` };
   }
 
-  cancel(userId: number, id: string): Reply {
-    const p = this.pending.get(id);
-    if (p?.userId === userId) this.pending.delete(id);
+  async cancel(userId: number, id: string): Promise<Reply> {
+    await this.deps.store.takePending(userId, id);
     return { text: "Cancelado. No se envió nada." };
   }
 }

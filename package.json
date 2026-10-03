@@ -16,9 +16,13 @@
     "test:watch": "vitest",
     "check": "tsx src/scripts/check.ts",
     "wallet:new": "tsx src/scripts/new-wallet.ts",
-    "studio:sync": "node scripts/studio-sync.mjs"
+    "studio:sync": "node scripts/studio-sync.mjs",
+    "web": "bun run src/server.ts",
+    "webhook:set": "tsx src/scripts/set-webhook.ts"
   },
   "dependencies": {
+    "@upstash/redis": "^1.39.0",
+    "@vercel/functions": "^3.9.11",
     "grammy": "^1.46.0",
     "viem": "^2.57.2",
     "zod": "^4.6.5"

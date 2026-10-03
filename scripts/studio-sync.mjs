@@ -14,7 +14,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const agentDir = resolve(process.argv[2] ?? join(root, "studio", "app", "agent"));
 const target = join(agentDir, "src", "primera");
 
-const INCLUDE = ["agent", "binance", "domain", "i18n", "llm", "stocks", "studio", "wallet", "app.ts", "config.ts", "ports.ts", "store.ts"];
+const INCLUDE = ["agent", "binance", "domain", "i18n", "llm", "stocks", "studio", "wallet", "app.ts", "config.ts", "ports.ts", "store.ts", "store-redis.ts"];
 
 rmSync(target, { recursive: true, force: true });
 mkdirSync(target, { recursive: true });

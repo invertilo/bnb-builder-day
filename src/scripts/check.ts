@@ -14,7 +14,7 @@ try {
   /* sin .env */
 }
 
-const cfg = loadConfig({ ...process.env, TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || "no-necesario-para-check" });
+const cfg = loadConfig(process.env, { requireTelegram: false });
 const app = buildApp(cfg);
 const ticker = (process.argv[2] ?? "NVDA").toUpperCase();
 const quoteUsd = process.argv[3] ? Number(process.argv[3]) : null;

@@ -31,7 +31,7 @@ export function createBot(agent: PrimeraAccion, opts: BotOptions): Bot {
     await ctx.answerCallbackQuery();
     await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
 
-    if (action === "no") return send(ctx, agent.cancel(userId, id!));
+    if (action === "no") return send(ctx, await agent.cancel(userId, id!));
     if (!opts.traders.has(userId)) return;
 
     await send(ctx, { text: "⏳ Enviando transacción…" });
@@ -62,19 +62,38 @@ async function send(ctx: Context, reply: Reply): Promise<void> {
   }
 }
 
-/** Revisa cada 5 minutos si hay compras programadas (DCA) y manda la propuesta para confirmar. */
-export function startDcaScheduler(bot: Bot, agent: PrimeraAccion, everyMs = 5 * 60_000): NodeJS.Timeout {
-  const tick = async () => {
+/** Comandos que muestra Telegram en el menú del bot. */
+export const BOT_COMMANDS = [
+  { command: "precio", description: "Precio en bolsa y de los tokens. Ej: /precio apple" },
+  { command: "analizar", description: "Análisis con IA de una acción. Ej: /analizar nvidia" },
+  { command: "comprar", description: "Comprar con USDT. Ej: /comprar 25 tesla" },
+  { command: "vender", description: "Vender. Ej: /vender todo apple" },
+  { command: "portafolio", description: "Tus acciones y saldo" },
+  { command: "canastas", description: "Tus canastas y plantillas" },
+  { command: "historial", description: "Últimas operaciones" },
+  { command: "ayuda", description: "Qué puedo hacer" },
+];
+
+/** Manda las propuestas de compras programadas (DCA) que vencieron. Devuelve cuántas envió. */
+export async function sendDcaProposals(bot: Bot, agent: PrimeraAccion): Promise<number> {
+  let sent = 0;
+  for (const { userId, reply } of await agent.dueDcaProposals()) {
+    const reply_markup = reply.confirmId
+      ? new InlineKeyboard().text("✅ Confirmar", `ok:${reply.confirmId}`).text("✖️ Cancelar", `no:${reply.confirmId}`)
+      : undefined;
     try {
-      for (const { userId, reply } of await agent.dueDcaProposals()) {
-        const reply_markup = reply.confirmId
-          ? new InlineKeyboard().text("✅ Confirmar", `ok:${reply.confirmId}`).text("✖️ Cancelar", `no:${reply.confirmId}`)
-          : undefined;
-        await bot.api.sendMessage(userId, reply.text, { parse_mode: "Markdown", reply_markup }).catch((e) => console.error("[dca]", e));
-      }
-    } catch (err) {
-      console.error("[dca]", err);
+      await bot.api.sendMessage(userId, reply.text, { parse_mode: "Markdown", reply_markup });
+      sent++;
+    } catch (e) {
+      console.error("[dca]", e);
     }
-  };
-  return setInterval(tick, everyMs);
+  }
+  return sent;
+}
+
+/** Modo proceso largo (npm run dev / Docker): revisa el DCA cada 5 minutos. En Vercel lo hace un cron. */
+export function startDcaScheduler(bot: Bot, agent: PrimeraAccion, everyMs = 5 * 60_000): NodeJS.Timeout {
+  return setInterval(() => {
+    sendDcaProposals(bot, agent).catch((err) => console.error("[dca]", err));
+  }, everyMs);
 }
