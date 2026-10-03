@@ -12,6 +12,15 @@ export function createBot(agent: PrimeraAccion, opts: BotOptions): Bot {
 
   bot.catch((err) => console.error("[telegram]", err.error));
 
+  // /id: muestra el ID de Telegram para agregarlo a TELEGRAM_TRADER_IDS.
+  bot.command("id", async (ctx) => {
+    const id = ctx.from?.id;
+    const allowed = id !== undefined && opts.traders.has(id);
+    await send(ctx, {
+      text: `Tu ID de Telegram es \`${id}\`.\n${allowed ? "✅ Puedes operar con la wallet del agente." : "Para operar, agrégalo a TELEGRAM_TRADER_IDS."}`,
+    });
+  });
+
   bot.on("message:text", async (ctx) => {
     const userId = ctx.from.id;
     const text = ctx.message.text;
@@ -71,6 +80,7 @@ export const BOT_COMMANDS = [
   { command: "portafolio", description: "Tus acciones y saldo" },
   { command: "canastas", description: "Tus canastas y plantillas" },
   { command: "historial", description: "Últimas operaciones" },
+  { command: "id", description: "Tu ID de Telegram (para autorizarte a operar)" },
   { command: "ayuda", description: "Qué puedo hacer" },
 ];
 

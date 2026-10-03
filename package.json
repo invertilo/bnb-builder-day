@@ -1,7 +1,7 @@
 {
   "name": "primera-accion",
   "version": "0.1.0",
-  "description": "Agente en español para comprar acciones tokenizadas en BNB Chain desde Telegram.",
+  "description": "Agente en espa\u00f1ol para comprar acciones tokenizadas en BNB Chain desde Telegram.",
   "type": "module",
   "private": true,
   "scripts": {
@@ -16,7 +16,8 @@
     "studio:sync": "node scripts/studio-sync.mjs",
     "web": "bun run src/server.ts",
     "webhook:set": "tsx src/scripts/set-webhook.ts",
-    "build:vercel": "rm -rf dist && esbuild src/server.ts --bundle --platform=node --format=esm --target=es2022 --sourcemap --alias:bufferutil=./scripts/optional-module-stub.cjs --alias:utf-8-validate=./scripts/optional-module-stub.cjs --alias:encoding=./scripts/optional-module-stub.cjs --alias:supports-color=./scripts/optional-module-stub.cjs --outfile=dist/server.js --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\""
+    "build:vercel": "rm -rf dist && esbuild src/server.ts --bundle --platform=node --format=esm --target=es2022 --sourcemap --alias:bufferutil=./scripts/optional-module-stub.cjs --alias:utf-8-validate=./scripts/optional-module-stub.cjs --alias:encoding=./scripts/optional-module-stub.cjs --alias:supports-color=./scripts/optional-module-stub.cjs --outfile=dist/server.js --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
+    "telegram:setup": "tsx src/scripts/setup-telegram.ts"
   },
   "dependencies": {
     "@upstash/redis": "^1.39.0",
