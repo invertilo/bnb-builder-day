@@ -53,7 +53,13 @@ export class OpenAiCompatibleLlm implements Llm {
       res = await this.post(body);
     }
 
-    const data = (await res.json().catch(() => ({}))) as ChatResponse;
+    const raw = await res.text();
+    let data: ChatResponse = {};
+    try {
+      data = JSON.parse(raw) as ChatResponse;
+    } catch {
+      // No es JSON (HTML, stream, etc.): lo reportamos abajo con un fragmento.
+    }
     if (!res.ok) {
       const hint = res.status === 503 ? " (¿el nombre del modelo coincide exactamente con el del proveedor?)" : "";
       throw new Error(`El LLM respondió ${res.status}: ${data.error?.message ?? res.statusText}${hint}`);
@@ -61,7 +67,10 @@ export class OpenAiCompatibleLlm implements Llm {
     const choice = data.choices?.[0];
     const content = textOf(choice?.message?.content);
     if (!content) {
-      throw new Error(`El LLM devolvió una respuesta vacía (finish_reason: ${choice?.finish_reason ?? "desconocido"})`);
+      const detail = choice
+        ? `finish_reason: ${choice.finish_reason ?? "desconocido"}`
+        : `sin choices · ${res.headers.get("content-type") ?? "sin content-type"} · ${raw.slice(0, 160).replace(/\s+/g, " ")}`;
+      throw new Error(`El LLM devolvió una respuesta vacía (${detail})`);
     }
     return content;
   }
