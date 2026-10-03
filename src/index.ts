@@ -1,3 +1,4 @@
+import { GrammyError } from "grammy";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { createBot, startDcaScheduler } from "./telegram/bot.js";
@@ -17,6 +18,14 @@ try {
 }
 const app = buildApp(cfg);
 const bot = createBot(app.agent, { token: cfg.TELEGRAM_BOT_TOKEN, traders: cfg.TELEGRAM_TRADER_IDS });
+
+try {
+  await bot.init();
+} catch (err) {
+  const unauthorized = err instanceof GrammyError && err.error_code === 401;
+  console.error(unauthorized ? "TELEGRAM_BOT_TOKEN no es válido: cópialo de nuevo desde @BotFather." : `No pude conectar con Telegram: ${(err as Error).message}`);
+  process.exit(1);
+}
 
 await bot.api.setMyCommands([
   { command: "precio", description: "Precio en bolsa y de los tokens. Ej: /precio apple" },

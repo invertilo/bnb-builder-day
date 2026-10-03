@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 import type { Issuer } from "./domain/types.js";
 
 const csvNumbers = z

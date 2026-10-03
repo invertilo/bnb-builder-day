@@ -1,0 +1,5 @@
+# Single-package workspace used when app/agent is the Docker build context.
+packages:
+  - .
+allowBuilds:
+  esbuild: true

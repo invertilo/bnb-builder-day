@@ -1,0 +1,8 @@
+# Seller agent workspace — the agent sub-project has its own package.
+packages:
+  - app/agent
+# pnpm 11 blocks dependency lifecycle scripts unless explicitly approved.
+# esbuild's install script selects/materializes the platform binary required
+# by both the local build and deploy-time bundle.
+allowBuilds:
+  esbuild: true

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.agentcore.aws.dev/v1/agentcore.json",
+  "name": "PrimeraAccion",
+  "version": 1,
+  "managedBy": "CDK",
+  "runtimes": [
+    {
+      "name": "PrimeraAccion",
+      "build": "CodeZip",
+      "entrypoint": "dist/unifiedMain.js",
+      "codeLocation": "app/agent/",
+      "networkMode": "PUBLIC",
+      "protocol": "A2A",
+      "envVars": [
+        {
+          "name": "OTEL_TRACES_EXPORTER",
+          "value": "none"
+        }
+      ],
+      "runtimeVersion": "NODE_22"
+    }
+  ]
+}

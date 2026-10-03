@@ -64,3 +64,10 @@ Notas crudas de la investigación de docs y paquetes. Son evidencia para el repo
 - La política de firma por defecto solo permite EIP-3009. Las órdenes RFQ (Permit2, CowSwap, 1inch Fusion) necesitan `[wallet.signing].extra_domains`.
 - El deploy gestionado (48 h) es solo testnet y recicla procesos inactivos tras 1 min, así que no sirve para un bot de Telegram en mainnet.
 - El top-up de Pieverse corre solo en BSC mainnet, aunque el agente esté en testnet.
+
+**Agent Studio en la práctica (3 oct, `bag init` + `bag dev` local)**
+- `bag init --no-onboard` genera el workspace sin wallet: útil para commitear el scaffold sin secretos.
+- `bag dev` dice que `/x402` es "PAID — active when B402 credentials are configured", pero con `price_usd = "0"` responde gratis (`bag doctor` lo informa bien como FREE).
+- El scaffold trae `zod ^3.25`; para compartir código con un proyecto en zod 4 hay que importar desde `zod/v4`.
+- `bag doctor` valida el bundle del deploy con esbuild (`zip bundle — esbuild dry run OK`), lo que viene bien para saber que el código externo empaqueta.
+- Con el agente sin fondos, `bag doctor` avisa que hacen falta ≥ 0,02 tBNB para el registro ERC-8004.

@@ -1,0 +1,95 @@
+[project]
+name = "PrimeraAccion-agent"
+
+[stack]
+# Project-lifetime facts: which runtime adapter recipe this Agent was
+# scaffolded against. doctor / dev / deploy read these to know what to
+# check, load, and route. runtime: agentcore | azure-foundry.
+runtime = "agentcore"
+# Public faces exposed by this one runtime and signer (canonical order):
+#   A2A — serveA2a: agent card + negotiate/notify_funded skills.
+#   MCP — streamable-HTTP /mcp: negotiate (signed quote) + notify_funded
+#         (verify → deliver → submit, synchronously within the tool call) +
+#         read-only chain tools.
+#   X402 or MPP — publish exactly one sibling B402 seller route (/x402 or
+#          /mpp). Payment-only still uses A2A as the cloud carrier but hides
+#          that native face at the public gateway.
+protocols = ["A2A","X402"]
+
+[network]
+default = "bsc-testnet"
+
+[deploy]
+# Legacy scaffold intent: this project was created for the managed BNB trial.
+# Deployment still requires an explicit `bag deploy --provider bnb` choice;
+# this field is never used as a silent provider default. Post-deploy state is
+# recorded under [deploy.platform].
+destination = "platform"
+# Artifact channel: 'zip' (evm-local default — managed runtime, no Docker)
+# or 'container' (local Docker build → brokered ECR; forced for twak).
+platform_artifact = "zip"
+
+[wallet]
+# Local keystore signer. The Agent is the SOLE key-holder/signer.
+# The keystore lives at the WORKSPACE root — outside app/agent (the deploy
+# codeLocation) — so no packaging path can bundle it into a deploy artifact.
+kind = "evm-local"
+signer = "local"
+keystore_dir = "../../.studio/wallets"
+# address = "0x..."   # filled by `bag wallet new`
+
+[llm]
+provider = "none"
+model = ""
+
+[payments]
+# Buyer spending allow-list for `bag erc8183 buy --asset`. Match a UI
+# symbol or canonical AssetId. Narrow this to lock spending to specific stables.
+allowed_payment_tokens = ["U","USDC","USDT"]
+
+[payments.seller]
+# 所有 Seller rail 与已配置资产共用同一个 USD 标价；"0" 表示 FREE。
+price_usd = "0"
+# 使用当前网络的 canonical AssetId；顺序会保留，允许改为任意非空子集。
+# 这里只列出当前 ERC-8183 合约栈能托管的资产。要卖更多币种，需要指向
+# 支持多 token 的部署（同时设置三个 ERC8183_*_ADDRESS），再把资产加回来。
+assets = ["TEST_U","TEST_USDC","TEST_USDT"]
+
+[payments.erc8183]
+# Seller 价格与资产来自 [payments.seller]；本表只保留 ERC-8183 行为参数。
+enabled = false
+quote_ttl_seconds = 900                        # seconds a signed quote stays valid; SDK caps at 900 (~15min work window)
+default_estimated_completion_seconds = 600
+poll_interval_seconds = 30
+auto_settle = false                            # opt-in: detect dispute-window-elapsed → settle
+
+[storage]
+# Deliverables written to local disk (file://). Offline-dev only —
+# does NOT survive deploy. Path from STORAGE_LOCAL_PATH.
+kind = "local"
+
+
+[payments.b402_seller]
+# Public X402 seller rail mounted at /x402. Credentials stay in
+# <workspace>/.studio/.env.local and are issued per B402 environment.
+# Primera Acción: con price_usd = "0" es un endpoint FREE (sin B402 verify/settle).
+enabled = true
+# Empty means the agent wallet receives payment.
+pay_to = ""
+# Payment settles before work; this bounds only the post-settlement work.
+work_timeout_seconds = 60
+# Optional Bazaar metadata can be added later as scalar JSON fields under
+# [payments.b402_seller.bazaar]: info_json, schema_json, description,
+# and route_template.
+
+[budget]
+# auto-topup consent — `acknowledged_at` is the ISO-8601 UTC
+# timestamp marking when the user explicitly accepted the auto-topup terms.
+# Both `enabled = true` AND a valid `acknowledged_at` are required for the
+# in-process auto-topup hook to fire (defends against hand-edits).
+enabled = false
+acknowledged_at = "2026-10-03T18:16:36Z"
+# Caps — tighten/loosen via `bag budget enable --max-per-topup-usd N ...`
+max_per_topup_usd = 1.0
+max_per_day_usd = 3.0
+max_per_month_usd = 15.0

@@ -1,5 +1,7 @@
 # Primera Acción 🇧🇴
 
+[![CI](https://github.com/invertilo/bnb-builder-day/actions/workflows/ci.yml/badge.svg)](https://github.com/invertilo/bnb-builder-day/actions/workflows/ci.yml)
+
 **Tu primera acción de Wall Street desde Telegram, en español, con USDT.**
 
 Un agente de IA que te deja comprar acciones tokenizadas de empresas de EE.UU. (Apple, NVIDIA, Tesla, el S&P 500…) en BNB Smart Chain escribiendo como hablas: _"compra 10 de nvidia"_. Proyecto para el **BNB Hack: Tokenized Stocks Edition**, nacido en las **BNB Builder Sessions de Santa Cruz, Bolivia**.
@@ -119,7 +121,7 @@ flowchart LR
 - **`src/stocks/quotes.ts`**: precio de la acción en bolsa (Yahoo Finance con respaldo de Binance).
 - **`src/llm/`**: cliente compatible con OpenAI (AgentRouter + `deepseek-v4-flash`).
 - **`src/telegram/`**: el bot (botones de confirmación, scheduler de compras programadas).
-- **BNB Agent Studio**: aporta la wallet del agente, su identidad onchain **ERC-8004**, el LLM que se autofinancia (Pieverse) y una cara pública **A2A / x402** para que otros agentes compren el _análisis pre-compra_ (precio, brecha, liquidez y horario para un monto dado).
+- **`studio/`**: el agente de **BNB Agent Studio** (generado con `bag init`). Expone el _análisis pre-compra_ por **A2A** y por **`/x402` gratis**, para que otros agentes de IA lo consuman. Tiene identidad onchain **ERC-8004** y firma con su propia wallet en código fijo, nunca desde el LLM. Detalles en la [guía de Agent Studio](docs/AGENT_STUDIO.md).
 
 > El deploy gestionado de prueba de Agent Studio (48 h) es solo testnet y apaga los procesos inactivos, mientras que las acciones tokenizadas viven en mainnet. Por eso el bot de Telegram corre como un proceso propio, siempre encendido, que usa la misma wallet e identidad del agente.
 
@@ -133,10 +135,11 @@ flowchart LR
 - [x] IA con `deepseek-v4-flash` vía AgentRouter: interpreta mensajes y analiza acciones con datos reales
 - [x] Trading con la Binance Web3 API: cotización, aprobación, swap u orden RFQ, simulación, envío con protección MEV
 - [x] Portafolio leído onchain (Multicall3 sobre todo el catálogo)
-- [x] Análisis pre-compra listo para el hook `runWork` de BNB Agent Studio ([guía](docs/AGENT_STUDIO.md))
+- [x] Agente de BNB Agent Studio en `studio/` con nuestro análisis en `runWork`, probado local con `bag dev` y `/x402` ([guía](docs/AGENT_STUDIO.md))
+- [x] CI (tests del bot + compilación del agente de Agent Studio) y Dockerfile para el bot
 - [x] 77 tests automáticos
 - [ ] Probar con la API key de Binance y una wallet con fondos (primera compra real en mainnet)
-- [ ] Workspace de Agent Studio (`bag init`), deploy y registro ERC-8004
+- [ ] Deploy del agente de Agent Studio (trial de 48 h) y registro ERC-8004
 - [ ] Deploy del bot y demo en video
 - [ ] Reporte de Developer Experience ([`DX_LOG.md`](DX_LOG.md))
 
@@ -171,6 +174,21 @@ npm test                # 77 tests
 
 Para operar, la wallet del agente necesita USDT (Ondo pide órdenes de ~20 USD como mínimo) y un poco de BNB para gas, en BNB Smart Chain.
 
+### Deploy del bot
+
+El bot es un proceso que tiene que quedar siempre encendido (long polling de Telegram, sin puertos abiertos). Con Docker:
+
+```bash
+docker build -t primera-accion .
+docker run -d --name primera-accion --env-file .env -v primera-data:/app/data --restart unless-stopped primera-accion
+```
+
+Sirve en cualquier VPS o servicio que corra contenedores (Railway, Fly.io, Render como _background worker_). El volumen `data/` guarda canastas, compras programadas e historial.
+
+### Agente de BNB Agent Studio
+
+Ver [docs/AGENT_STUDIO.md](docs/AGENT_STUDIO.md): `npm run studio:sync`, `bag dev` y `bag deploy --provider bnb`.
+
 ## Estructura
 
 ```
@@ -202,6 +220,10 @@ src/
 ├── telegram/bot.ts     # bot grammY + scheduler de DCA
 ├── ports.ts            # interfaces MarketData / Trader / Llm
 └── store.ts            # persistencia simple en JSON
+studio/                 # agente de BNB Agent Studio (bag init) con nuestro runWork
+scripts/studio-sync.mjs # copia src/ al agente de Agent Studio antes de dev/deploy
+docs/AGENT_STUDIO.md    # guía de Agent Studio
+Dockerfile              # imagen del bot
 ```
 
 ## Hackathon

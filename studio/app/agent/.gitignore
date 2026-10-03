@@ -1,0 +1,10 @@
+# agent/ sub-project — local state ignored from version control.
+# (.env.local + the keystore live at the workspace-root .studio/, covered by the
+# workspace .gitignore; these guard any stray .studio/ content under app/agent/.)
+.studio/wallets/
+.studio/audit-log.jsonl
+.env.local
+
+# Node (also caught by the workspace root gitignore; duplicated for clarity)
+node_modules/
+dist/

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 import { parseWeights } from "../domain/baskets.js";
 
 export const IntentSchema = z.discriminatedUnion("kind", [

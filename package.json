@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "tsx src/scripts/check.ts",
-    "wallet:new": "tsx src/scripts/new-wallet.ts"
+    "wallet:new": "tsx src/scripts/new-wallet.ts",
+    "studio:sync": "node scripts/studio-sync.mjs"
   },
   "dependencies": {
     "grammy": "^1.46.0",

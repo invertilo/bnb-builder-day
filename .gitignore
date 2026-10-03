@@ -6,3 +6,6 @@ dist/
 *.log
 .DS_Store
 data/
+
+# Copia generada por npm run studio:sync (la fuente es src/)
+studio/app/agent/src/primera/
