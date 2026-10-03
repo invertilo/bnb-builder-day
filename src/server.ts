@@ -25,7 +25,12 @@ function start(): (req: Request) => Promise<Response> {
 
   // En serverless cada instancia nueva pide getMe una vez; si falla, se reintenta en el próximo request.
   let ready: Promise<void> | null = null;
-  const ensureBot = () => (ready ??= bot!.init().catch((err) => ((ready = null), Promise.reject(err))));
+  // grammY reintenta getMe para siempre si falla la red: le ponemos un tope de 15 s para que el error aparezca.
+  const ensureBot = () =>
+    (ready ??= Promise.race([
+      bot!.init(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("bot.init (getMe) tardó más de 15 s")), 15_000)),
+    ]).catch((err) => ((ready = null), Promise.reject(err))));
 
   return createHandler({
     analyze: createStudioRunWork(app),
