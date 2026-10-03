@@ -30,6 +30,7 @@ Lo encontramos en el primer deploy real (3 oct):
 - **`server.ts` en la raíz.** Vercel busca el punto de entrada en el orden `app`, `index`, `server`, `main` y después `src/app`, `src/index`, `src/server`, así que encontraba `src/app.ts` antes que `src/server.ts`. El `server.ts` de la raíz solo importa `src/server.ts`.
 - **TypeScript 6, no 7.** El builder (`@vercel/backends`) llama a `ts.sys.readFile`, que TypeScript 7 ya no expone.
 - **Un solo bundle con esbuild (`npm run build:vercel` → `dist/server.js`).** Si `dist/` tiene la salida de `tsc`, Vercel toma `dist/app.js` como handler, porque busca `app` antes que `server`. Además, el rastreo de archivos no incluía `@noble/hashes/esm/cryptoNode.js`, que Bun resuelve con la condición `node` (lo usa `viem`). Con un bundle único, en `dist/` solo queda `server.js` y no hay nada que resolver al ejecutarse.
+- **Sin `require` externos en el bundle.** Sin `node_modules`, Bun intenta *auto-instalar* cualquier paquete que falte, y en Vercel el disco es de solo lectura (`bun is unable to write files: EROFS`). Las dependencias opcionales (`bufferutil`, `utf-8-validate`, `encoding`, `supports-color`) se reemplazan con `scripts/optional-module-stub.cjs`, que responde "no encontrado" y deja que el `try/catch` de cada librería siga sin ellas. Además, `BUN_RUNTIME_TRANSPILER_CACHE_PATH=0` desactiva la caché en disco del transpilador.
 
 ## Deploy paso a paso
 
