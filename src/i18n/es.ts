@@ -25,7 +25,7 @@ _${DISCLAIMER}_`;
 export const WHAT_IS_TOKENIZED = `*¿Qué es una acción tokenizada?*
 Es un token en la blockchain que sigue el precio de una acción real (por ejemplo Apple). Lo emite una empresa (bStocks, Ondo o xStocks) que respalda el token con la acción o con un instrumento equivalente.
 
-*Lo bueno:* puedes comprar desde 1 USDT, a cualquier hora, sin abrir una cuenta en un broker de EE.UU.
+*Lo bueno:* puedes comprar con montos chicos en USDT, a cualquier hora, sin abrir una cuenta en un broker de EE.UU. (algunos emisores piden un mínimo por orden, por ejemplo 20 USD).
 
 *Lo que tienes que saber:*
 • Dependes del emisor que respalda el token.

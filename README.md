@@ -36,7 +36,7 @@ Un agente de IA que te deja comprar acciones tokenizadas de empresas de EE.UU. (
 
 ## El problema
 
-En Bolivia y en buena parte de Latinoamérica, invertir en acciones de EE.UU. es complicado: abrir una cuenta en un broker extranjero es lento, pide papeleo y mover dinero al exterior no es simple. Las **acciones tokenizadas** en BNB Chain resuelven el acceso (se compran con USDT, desde 1 dólar, 24/7), pero usarlas hoy exige saber de wallets, DEX, slippage y contratos.
+En Bolivia y en buena parte de Latinoamérica, invertir en acciones de EE.UU. es complicado: abrir una cuenta en un broker extranjero es lento, pide papeleo y mover dinero al exterior no es simple. Las **acciones tokenizadas** en BNB Chain resuelven el acceso (se compran con USDT, con montos chicos y a cualquier hora), pero usarlas hoy exige saber de wallets, DEX, slippage y contratos.
 
 ## La solución
 
