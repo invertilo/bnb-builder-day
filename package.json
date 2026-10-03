@@ -13,7 +13,9 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check": "tsx src/scripts/check.ts",
+    "wallet:new": "tsx src/scripts/new-wallet.ts"
   },
   "dependencies": {
     "grammy": "^1.46.0",

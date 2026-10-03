@@ -3,6 +3,7 @@ import { parseWeights } from "../domain/baskets.js";
 
 export const IntentSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("price"), ticker: z.string() }),
+  z.object({ kind: z.literal("analyze"), ticker: z.string() }),
   z.object({ kind: z.literal("buy"), ticker: z.string(), usd: z.number().positive() }),
   z.object({ kind: z.literal("sell"), ticker: z.string(), usd: z.union([z.number().positive(), z.literal("all")]) }),
   z.object({ kind: z.literal("portfolio") }),
@@ -69,6 +70,9 @@ export function parseIntentRules(input: string): Intent | null {
 
   let m = text.match(new RegExp(String.raw`^(?:/precio|precio|cotiza|cuánto (?:está|vale|cuesta)) (?:de |a )?${NAME}\??$`));
   if (m) return { kind: "price", ticker: resolveTicker(m[1]!) };
+
+  m = text.match(new RegExp(String.raw`^(?:/analizar|analiza|analizar|análisis de|analisis de|info de|información de|informacion de) ${NAME}\??$`));
+  if (m) return { kind: "analyze", ticker: resolveTicker(m[1]!) };
 
   // "canasta chips NVDA 40 AMD 30 TSM 30" / "crea la canasta chips: NVDA AMD"
   m = text.match(/^(?:\/canasta|canasta|crea(?:r)? (?:la |una )?canasta) ([a-z0-9áéíóúñ-]+):? (.+)$/);

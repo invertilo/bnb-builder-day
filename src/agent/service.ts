@@ -5,16 +5,19 @@ import { checkTrade, gapBps, type TradePolicy } from "../domain/policy.js";
 import { planRebalance } from "../domain/rebalance.js";
 import type { Basket, PlannedTrade, StockToken } from "../domain/types.js";
 import * as es from "../i18n/es.js";
-import type { Llm, MarketData, Quote, Trader } from "../ports.js";
+import type { Llm, MarketData, PriceInfo, Quote, Trader } from "../ports.js";
 import type { Store } from "../store.js";
 import { IntentSchema, parseIntentRules, resolveTicker, type Intent } from "./intents.js";
-import { EXPLAIN_PROMPT, INTENT_PROMPT } from "./prompts.js";
+import { ANALYZE_PROMPT, EXPLAIN_PROMPT, INTENT_PROMPT } from "./prompts.js";
 
 export interface Reply {
   text: string;
   /** Si existe, la UI muestra botones Confirmar / Cancelar para esta operación pendiente. */
   confirmId?: string;
 }
+
+/** Una orden a preparar. `token` fija el emisor (ej. al vender lo que ya tienes). */
+type TradeRequest = PlannedTrade & { token?: StockToken; all?: boolean };
 
 interface Pending {
   userId: number;
@@ -23,7 +26,9 @@ interface Pending {
   label: string;
 }
 
-const PUBLIC_INTENTS = new Set<Intent["kind"]>(["price", "explain", "help", "unknown", "basket_list"]);
+const PUBLIC_INTENTS = new Set<Intent["kind"]>(["price", "analyze", "explain", "help", "unknown", "basket_list"]);
+
+const round = (n: number, digits = 4) => Math.round(n * 10 ** digits) / 10 ** digits;
 
 /** Cotizaciones más viejas que esto se vuelven a pedir antes de ejecutar. */
 const QUOTE_TTL_MS = 60_000;
@@ -85,6 +90,8 @@ export class PrimeraAccion {
         return this.explain(intent.question);
       case "price":
         return this.priceReply(intent.ticker);
+      case "analyze":
+        return this.analyzeReply(intent.ticker);
       case "portfolio":
         return this.portfolioReply();
       case "history":
@@ -116,7 +123,9 @@ export class PrimeraAccion {
   // ── Consultas ──────────────────────────────────────────────────────────────
 
   private async explain(question: string): Promise<Reply> {
-    if (/tokeniz/i.test(question) || !this.deps.llm) return { text: es.WHAT_IS_TOKENIZED };
+    if (!this.deps.llm || /^(¿)?qu[ée] es una acci[óo]n tokenizada\??$/i.test(question.trim())) {
+      return { text: es.WHAT_IS_TOKENIZED };
+    }
     const answer = await this.deps.llm.text(EXPLAIN_PROMPT, question);
     return { text: `${answer}\n\n_${es.DISCLAIMER}_` };
   }
@@ -127,16 +136,46 @@ export class PrimeraAccion {
     return tokens;
   }
 
-  private async priceReply(ticker: string): Promise<Reply> {
+  private async prices(ticker: string): Promise<PriceInfo[]> {
     const tokens = await this.resolveTokens(resolveTicker(ticker));
-    const lines = await Promise.all(
-      tokens.map(async (t) => {
-        const p = await this.deps.market.price(t);
-        const ref = p.referenceUsd ? ` · referencia ${es.usd(p.referenceUsd)} (${es.pct(gapBps(p.onchainUsd, p.referenceUsd))})` : "";
-        return `• *${t.symbol}* (${t.issuer}): ${es.usd(p.onchainUsd)}${ref}`;
-      }),
+    const results = await Promise.allSettled(tokens.map((t) => this.deps.market.price(t)));
+    const prices = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+    if (!prices.length) throw new BasketError(`No pude obtener el precio de ${ticker} ahora. Intenta en unos segundos.`);
+    return prices;
+  }
+
+  private async priceReply(ticker: string): Promise<Reply> {
+    const prices = await this.prices(ticker);
+    return { text: es.priceCard(prices, this.now()) };
+  }
+
+  /** Datos reales de bolsa + tokens, explicados por la IA en español (sin recomendar). */
+  private async analyzeReply(ticker: string): Promise<Reply> {
+    const prices = await this.prices(ticker);
+    const card = es.priceCard(prices, this.now());
+    const facts = es.fundamentalsBlock(prices[0]!);
+    if (!this.deps.llm) return { text: `${card}${facts ? `\n\n${facts}` : ""}` };
+
+    const data = JSON.stringify(
+      prices.map((p) => ({
+        token: p.token.symbol,
+        emisor: p.token.issuer,
+        precio_token_usdt: round(p.onchainUsd),
+        precio_accion_bolsa_usd: p.stock ? round(p.stock.priceUsd) : null,
+        cierre_anterior_usd: p.stock?.previousCloseUsd ?? null,
+        hora_precio_bolsa: p.stock?.at?.toISOString() ?? null,
+        sesion_precio_bolsa: p.stock?.session ?? null,
+        acciones_por_token: round(p.multiplier, 6),
+        brecha_vs_bolsa_pct: p.referenceUsd ? gapBps(p.onchainUsd, p.referenceUsd) / 100 : null,
+        cambio_token_24h_pct: p.change24hPct,
+        operable: p.tradable.ok,
+        motivo_no_operable: p.tradable.reason,
+        fundamentales: p.fundamentals,
+      })),
     );
-    return { text: `📈 *${tokens[0]!.name}*\n${lines.join("\n")}\n\n${es.sessionLabel(usMarketSession(this.now()))}` };
+    const session = es.sessionLabel(usMarketSession(this.now()));
+    const analysis = await this.deps.llm.text(ANALYZE_PROMPT, `Acción: ${ticker}\nEstado de la bolsa: ${session}\nDatos: ${data}`);
+    return { text: `${card}\n\n🧠 *Análisis*\n${analysis}\n\n_${es.DISCLAIMER}_` };
   }
 
   private async portfolioReply(): Promise<Reply> {
@@ -281,25 +320,32 @@ export class PrimeraAccion {
 
   private async prepareSell(userId: number, ticker: string, amount: number | "all"): Promise<Reply> {
     const pf = await this.deps.trader.portfolio();
-    const positions = pf.positions.filter((p) => p.token.ticker === ticker);
+    const positions = pf.positions.filter((p) => p.token.ticker === ticker && p.units > 0);
     if (!positions.length) return { text: `No tienes ${ticker}.` };
     const held = positions.reduce((s, p) => s + p.valueUsd, 0);
-    const usd = amount === "all" ? held : Math.min(amount, held);
-    return this.prepareTrades(userId, [{ ticker, side: "sell", usd }], `Vender ${es.usd(usd)} de ${ticker}`, amount === "all");
+
+    if (amount === "all") {
+      // Vender todo: una orden por cada emisor en el que tengas ese ticker.
+      const trades = positions.map((p) => ({ ticker, side: "sell" as const, usd: p.valueUsd, token: p.token, all: true }));
+      return this.prepareTrades(userId, trades, `Vender todo tu ${ticker} (≈ ${es.usd(held)})`);
+    }
+    const usd = Math.min(amount, held);
+    return this.prepareTrades(userId, [{ ticker, side: "sell", usd }], `Vender ${es.usd(usd)} de ${ticker}`);
   }
 
   /** Cotiza, simula y chequea límites. No ejecuta nada: devuelve una confirmación pendiente. */
-  private async prepareTrades(userId: number, trades: PlannedTrade[], label: string, sellAll = false): Promise<Reply> {
+  private async prepareTrades(userId: number, trades: TradeRequest[], label: string): Promise<Reply> {
     if (!trades.length) return { text: `No hay nada para operar (cada orden tiene que ser de al menos ${es.usd(this.deps.minTradeUsd)}).` };
 
     const quotes: Quote[] = [];
     const lines: string[] = [];
     const warnings = new Set<string>();
+    const notes = new Set<string>();
+    let allOnchain = true;
     let spent = await this.deps.store.spentLast24h(userId, this.now());
 
     for (const trade of trades) {
-      const quote = await this.bestQuote(trade, sellAll);
-      const price = await this.deps.market.price(quote.token);
+      const { quote, price } = await this.bestQuote(trade);
       const effective = quote.usd / quote.tokenAmount;
       const gap = price.referenceUsd ? gapBps(effective, price.referenceUsd) : null;
 
@@ -313,14 +359,18 @@ export class PrimeraAccion {
       verdict.warnings.forEach((w) => warnings.add(`${trade.ticker}: ${w}`));
 
       const sim = await this.deps.trader.simulate(quote);
-      if (!sim.ok) return { text: `⛔ La simulación de ${quote.token.symbol} falló: ${sim.error ?? "error desconocido"}. No envié nada.` };
+      if (!sim.ok) return { text: `⛔ ${quote.token.symbol}: ${sim.error ?? "los chequeos previos fallaron"}. No envié nada.` };
+      sim.notes.forEach((n) => notes.add(n));
+      if (sim.kind !== "onchain") allOnchain = false;
 
       if (trade.side === "buy") spent += trade.usd;
       quotes.push(quote);
       lines.push(
-        `${trade.side === "buy" ? "🟢 Compra" : "🔴 Venta"} *${quote.token.symbol}* (${quote.token.issuer}): ${es.usd(quote.usd)} ≈ ${es.units(quote.tokenAmount)} tokens` +
-          `\n   precio ${es.usd(effective)}${gap !== null ? ` (${es.pct(gap)} vs referencia)` : ""} · slippage máx ${es.pct(quote.slippageBps)}` +
-          (sim.gasUsd !== null ? ` · gas ≈ ${es.usd(sim.gasUsd)}` : ""),
+        `${trade.side === "buy" ? "🟢 Compra" : "🔴 Venta"} *${quote.token.symbol}* (${es.issuerName(quote.token.issuer)}): ${es.usd(quote.usd)} ≈ ${es.units(quote.tokenAmount)} tokens` +
+          `\n   precio ${es.usd(effective)}${gap !== null ? ` (${es.signedPct(gap)} vs bolsa)` : ""} · slippage máx ${es.pct(quote.slippageBps)}` +
+          (quote.priceImpactBps !== null ? ` · impacto ${es.pct(quote.priceImpactBps)}` : "") +
+          (sim.gasBnb !== null ? ` · gas ≈ ${sim.gasBnb.toFixed(5)} BNB` : "") +
+          `\n   ruta: ${quote.route}`,
       );
     }
 
@@ -336,39 +386,46 @@ export class PrimeraAccion {
         lines.join("\n"),
         `\n${es.sessionLabel(session)}`,
         ...[...warnings].map((w) => `⚠️ ${w}`),
-        "\n✅ Simulación OK. ¿Confirmas?",
+        ...[...notes].map((n) => `ℹ️ ${n}`),
+        `\n✅ ${allOnchain ? "Simulación onchain OK" : "Chequeos previos OK"}. ¿Confirmas?`,
       ].join("\n"),
       confirmId: id,
     };
   }
 
-  /** Si la acción existe en varios emisores, cotiza en todos y elige el que entrega mejor precio vs su referencia. */
-  private async bestQuote(trade: PlannedTrade, sellAll: boolean): Promise<Quote> {
-    let tokens = await this.resolveTokens(trade.ticker);
-    if (trade.side === "sell") {
+  /**
+   * Si la acción existe en varios emisores, cotiza en los que se pueden operar ahora
+   * y elige el que da mejor precio frente a la bolsa.
+   */
+  private async bestQuote(trade: TradeRequest): Promise<{ quote: Quote; price: PriceInfo }> {
+    let tokens = trade.token ? [trade.token] : await this.resolveTokens(trade.ticker);
+    if (trade.side === "sell" && !trade.token) {
       const pf = await this.deps.trader.portfolio();
       const held = new Set(pf.positions.filter((p) => p.units > 0).map((p) => p.token.address.toLowerCase()));
       tokens = tokens.filter((t) => held.has(t.address.toLowerCase()));
-      if (sellAll && tokens.length > 1) tokens = tokens.slice(0, 1);
     }
 
     const results = await Promise.allSettled(
       tokens.map(async (t) => {
-        const [q, p] = await Promise.all([this.deps.trader.quote(t, trade.side, trade.usd), this.deps.market.price(t)]);
-        const effective = q.usd / q.tokenAmount;
-        const ref = p.referenceUsd ?? p.onchainUsd;
+        const price = await this.deps.market.price(t);
+        if (!price.tradable.ok) throw new Error(`${t.symbol}: ${price.tradable.reason}`);
+        const quote = await this.deps.trader.quote(t, trade.side, trade.usd, { all: trade.all });
+        const effective = quote.usd / quote.tokenAmount;
+        const ref = price.referenceUsd ?? price.onchainUsd;
         // Compra: menor sobreprecio es mejor. Venta: mayor precio es mejor.
         const score = trade.side === "buy" ? effective / ref : ref / effective;
-        return { q, score };
+        return { quote, price, score };
       }),
     );
     const ok = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
     if (!ok.length) {
-      const reason = results.find((r): r is PromiseRejectedResult => r.status === "rejected")?.reason;
-      throw new BasketError(`No conseguí cotización para ${trade.ticker}: ${(reason as Error)?.message ?? "sin liquidez"}`);
+      const reasons = results
+        .flatMap((r) => (r.status === "rejected" ? [(r.reason as Error)?.message ?? "sin liquidez"] : []))
+        .join("; ");
+      throw new BasketError(`No conseguí cotización para ${trade.ticker}: ${reasons || "sin liquidez"}`);
     }
     ok.sort((a, b) => a.score - b.score);
-    return ok[0]!.q;
+    return ok[0]!;
   }
 
   async confirm(userId: number, id: string): Promise<Reply> {

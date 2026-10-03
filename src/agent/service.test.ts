@@ -18,19 +18,34 @@ const REF: Record<string, number> = { AAPL: 199, NVDA: 100 };
 class FakeMarket implements MarketData {
   async listStocks() { return TOKENS; }
   async findStock(q: string) { return TOKENS.filter((t) => t.ticker === q.toUpperCase() || t.symbol === q); }
+  paused = new Set<string>();
   async price(token: StockToken): Promise<PriceInfo> {
-    return { token, onchainUsd: PRICES[token.symbol]!, referenceUsd: REF[token.ticker] ?? null, session: "open" };
+    const ref = REF[token.ticker] ?? null;
+    return {
+      token,
+      onchainUsd: PRICES[token.symbol]!,
+      referenceUsd: ref,
+      multiplier: 1,
+      stock: ref
+        ? { ticker: token.ticker, name: token.name, priceUsd: ref, at: null, session: "regular", regularPriceUsd: ref, previousCloseUsd: ref, source: "Yahoo Finance" }
+        : null,
+      change24hPct: 0,
+      session: "open",
+      tradable: this.paused.has(token.symbol) ? { ok: false, reason: "el emisor pausó este token (pago de dividendos)" } : { ok: true, reason: null },
+      fundamentals: null,
+    };
   }
 }
 
 class FakeTrader implements Trader {
   executed: Quote[] = [];
   holdings = new Map<string, number>();
-  async quote(token: StockToken, side: Side, usd: number): Promise<Quote> {
+  async quote(token: StockToken, side: Side, usd: number, opts: { all?: boolean } = {}): Promise<Quote> {
     const px = PRICES[token.symbol]!;
-    return { token, side, usd, tokenAmount: usd / px, minOut: (usd / px) * 0.99, slippageBps: 50, priceImpactBps: 10, route: "fake", raw: null };
+    const units = side === "sell" && opts.all ? this.holdings.get(token.symbol) ?? 0 : usd / px;
+    return { token, side, usd: units * px, tokenAmount: units, minOut: units * 0.99, slippageBps: 50, priceImpactBps: 10, route: "fake", raw: null };
   }
-  async simulate() { return { ok: true, gasUsd: 0.05 }; }
+  async simulate() { return { ok: true, kind: "onchain" as const, gasBnb: 0.0002, notes: [] }; }
   async execute(q: Quote) {
     this.executed.push(q);
     const prev = this.holdings.get(q.token.symbol) ?? 0;
@@ -52,6 +67,7 @@ class FakeTrader implements Trader {
 }
 
 let trader: FakeTrader;
+let market: FakeMarket;
 let agent: PrimeraAccion;
 const OWNER = 42;
 const STRANGER = 7;
@@ -61,8 +77,9 @@ const now = () => new Date("2026-10-06T15:00:00Z");
 beforeEach(async () => {
   trader = new FakeTrader();
   const dir = await mkdtemp(join(tmpdir(), "pa-"));
+  market = new FakeMarket();
   agent = new PrimeraAccion({
-    market: new FakeMarket(),
+    market,
     trader,
     llm: null,
     store: new Store(join(dir, "state.json")),
@@ -138,6 +155,28 @@ describe("PrimeraAccion", () => {
     const buy = await agent.handle(OWNER, "compra 30 de nvidia", true);
     await agent.confirm(OWNER, buy.confirmId!);
     const sell = await agent.handle(OWNER, "vende todo mi nvidia", true);
-    expect(sell.text).toContain("Vender 30");
+    expect(sell.text).toContain("Vender todo tu NVDA");
+    await agent.confirm(OWNER, sell.confirmId!);
+    expect(trader.holdings.get("NVDAon")).toBe(0);
+  });
+
+  it("salta el emisor pausado y usa el otro", async () => {
+    market.paused.add("bAAPL");
+    const reply = await agent.handle(OWNER, "compra 20 de apple", true);
+    expect(reply.text).toContain("AAPLx");
+  });
+
+  it("si todos los emisores están pausados, explica el motivo", async () => {
+    market.paused.add("NVDAon");
+    const reply = await agent.handle(OWNER, "compra 20 de nvidia", true);
+    expect(reply.confirmId).toBeUndefined();
+    expect(reply.text).toContain("dividendos");
+  });
+
+  it("precio muestra la bolsa y cada token", async () => {
+    const reply = await agent.handle(STRANGER, "precio de apple", false);
+    expect(reply.text).toContain("En bolsa");
+    expect(reply.text).toContain("AAPLx");
+    expect(reply.text).toContain("bAAPL");
   });
 });

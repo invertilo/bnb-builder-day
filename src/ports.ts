@@ -1,12 +1,29 @@
 import type { Address, Side, StockToken } from "./domain/types.js";
 import type { MarketSession } from "./domain/market-hours.js";
+import type { StockQuote } from "./stocks/quotes.js";
 
-/** Precio de un token: el onchain (lo que pagas) y el de la acción subyacente (referencia). */
+/** Precio de un token: el onchain (lo que pagas) y el de la acción en bolsa (referencia). */
 export interface PriceInfo {
   token: StockToken;
   onchainUsd: number;
+  /** Valor de 1 token según la bolsa: precio de la acción × multiplicador del emisor. null sin precio de bolsa. */
   referenceUsd: number | null;
+  /** Acciones que representa 1 token (dividendos reinvertidos, splits). */
+  multiplier: number;
+  stock: StockQuote | null;
+  change24hPct: number | null;
   session: MarketSession;
+  /** Si el emisor permite operar ahora (pausas por dividendos, splits, resultados). */
+  tradable: { ok: boolean; reason: string | null };
+  fundamentals: Fundamentals | null;
+}
+
+export interface Fundamentals {
+  high52w: number | null;
+  low52w: number | null;
+  marketCapUsd: number | null;
+  priceToEarnings: number | null;
+  dividendYieldPct: number | null;
 }
 
 export interface Quote {
@@ -27,7 +44,12 @@ export interface Quote {
 
 export interface Simulation {
   ok: boolean;
-  gasUsd: number | null;
+  /** "onchain" = simulación real de la transacción; "preflight" = chequeos previos (órdenes RFQ firmadas fuera de la cadena). */
+  kind: "onchain" | "preflight";
+  /** Gas estimado de la transacción principal, en BNB. */
+  gasBnb: number | null;
+  /** Avisos no bloqueantes, ej. "primero hay que aprobar USDT". */
+  notes: string[];
   error?: string;
 }
 
@@ -54,7 +76,8 @@ export interface MarketData {
 
 /** Ejecución onchain desde la wallet del agente. */
 export interface Trader {
-  quote(token: StockToken, side: Side, usd: number): Promise<Quote>;
+  /** `all` en una venta: vende todo el saldo del token en vez de un monto en USD. */
+  quote(token: StockToken, side: Side, usd: number, opts?: { all?: boolean }): Promise<Quote>;
   simulate(quote: Quote): Promise<Simulation>;
   execute(quote: Quote): Promise<{ txHash: string }>;
   portfolio(): Promise<Portfolio>;

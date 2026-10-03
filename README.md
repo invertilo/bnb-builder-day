@@ -43,23 +43,26 @@ En Bolivia y en buena parte de Latinoamérica, invertir en acciones de EE.UU. es
 **Primera Acción** es un agente que conversa en español y se encarga de la parte técnica:
 
 ```
-Tú:    compra 20 de apple
-Bot:   🧾 Comprar 20,00 USDT de AAPL
-       🟢 Compra AAPL vía bStocks: 20,00 USDT ≈ 0,1010 tokens
-          precio 198,02 USDT (-0,49% vs referencia) · slippage máx 0,50% · gas ≈ 0,05 USDT
+Tú:    compra 25 de apple
+Bot:   🧾 Comprar 25,00 USDT de AAPL
+       🟢 Compra AAPLB (bStocks): 25,00 USDT ≈ 0,0749 tokens
+          precio 333,70 USDT (-0,03% vs bolsa) · slippage máx 1,00% · impacto 0,10%
+          ruta: PcsXRfq · orden RFQ
        🌙 Bolsa cerrada (fin de semana)
        ⚠️ La bolsa de EE.UU. está cerrada: el token sigue operando, pero su precio
           puede moverse distinto al de la acción hasta la próxima apertura.
-       ✅ Simulación OK. ¿Confirmas?          [ ✅ Confirmar ]  [ ✖️ Cancelar ]
+       ℹ️ Ondo y bStocks se ejecutan como orden RFQ firmada: Binance la completa onchain.
+       ✅ Chequeos previos OK. ¿Confirmas?          [ ✅ Confirmar ]  [ ✖️ Cancelar ]
 ```
 
-_(Ejemplo ilustrativo con precios ficticios.)_
+_(Ejemplo ilustrativo: la cotización y la ruta varían.)_
 
 ### Qué puede hacer
 
 | Función | Ejemplo |
 |---|---|
-| Consultar precios (onchain vs. precio real de la acción) | `precio de tesla` |
+| Precio **en tiempo real de la bolsa** (incluye pre y post mercado) frente al precio de cada token | `precio de tesla` |
+| Análisis con IA usando datos reales (sin recomendar compras) | `analiza nvidia` |
 | Comprar y vender con USDT | `compra 10 de nvidia` · `vende todo mi apple` |
 | Elegir el mejor emisor automáticamente | Si AAPL existe en bStocks, Ondo y xStocks, cotiza en los tres y elige el de mejor precio |
 | Canastas temáticas armadas por ti | `canasta chips NVDA 40 AMD 30 TSM 30` |
@@ -69,7 +72,13 @@ _(Ejemplo ilustrativo con precios ficticios.)_
 | Ver portafolio e historial | `portafolio` · `historial` |
 | Aprender | `¿qué es una acción tokenizada?` |
 
-Las frases frecuentes se entienden con reglas (rápido y gratis). Lo demás lo interpreta un LLM, que siempre devuelve una orden estructurada y validada, nunca una transacción.
+Las frases frecuentes se entienden con reglas (rápido y gratis). Lo demás lo interpreta un LLM (**`deepseek-v4-flash` vía AgentRouter**, compatible con OpenAI), que siempre devuelve una orden estructurada y validada, nunca una transacción.
+
+### Precios en tiempo real
+
+- **Acción en bolsa:** Yahoo Finance, con hora exacta y sesión (en vivo, pre-mercado, post-mercado). Si falla, se usa el precio de bolsa que publica Binance.
+- **Token onchain:** Binance Wallet (endpoints públicos de RWA), con el multiplicador de cada emisor (dividendos reinvertidos, splits).
+- **Brecha:** precio del token contra precio de la acción × multiplicador. Con la bolsa cerrada, la brecha muestra cuánto se adelanta el mercado onchain.
 
 ## Seguridad primero
 
@@ -94,8 +103,9 @@ flowchart LR
     A --> D[Dominio<br/>límites · canastas · rebalanceo · horario]
     A --> M[MarketData]
     A --> T[Trader]
-    M --> API[Binance Web3 API<br/>RWA Data · Market]
-    T --> TRD[Binance Web3 API<br/>Trading · Transaction · Wallet]
+    M --> API[Binance Wallet API pública<br/>catálogo RWA · precio onchain · estado]
+    M --> Y[Yahoo Finance<br/>precio en bolsa en tiempo real]
+    T --> TRD[Binance Web3 API<br/>Trading · Transaction<br/>swap AMM u orden RFQ]
     T --> W[Wallet del agente<br/>identidad ERC-8004]
     W --> BSC[(BNB Smart Chain<br/>bStocks · Ondo · xStocks)]
     X[Otros agentes de IA] -. A2A / x402 .-> S[Análisis pre-compra<br/>BNB Agent Studio]
@@ -105,6 +115,9 @@ flowchart LR
 - **`src/domain/`**: lógica pura y testeada: canastas, plan de rebalanceo, horario de la bolsa de EE.UU., límites de seguridad.
 - **`src/agent/`**: el cerebro: interpreta mensajes (reglas + LLM), cotiza en todos los emisores, simula, aplica límites y gestiona confirmaciones y DCA.
 - **`src/ports.ts`**: interfaces `MarketData`, `Trader` y `Llm`. El agente no depende de un proveedor concreto, así que se prueba con un mercado simulado y se conecta a las APIs reales sin tocar la lógica.
+- **`src/binance/`**: clientes de Binance. `public.ts` (catálogo y precios sin clave), `auth.ts` (firma HMAC), `market.ts` y `trader.ts`. Ondo y bStocks se ejecutan como **orden RFQ firmada (EIP-712)** y xStocks como swap normal. Antes de firmar se aprueba el gasto justo, se simula, se envía con **protección MEV** y se verifica el mínimo garantizado.
+- **`src/stocks/quotes.ts`**: precio de la acción en bolsa (Yahoo Finance con respaldo de Binance).
+- **`src/llm/`**: cliente compatible con OpenAI (AgentRouter + `deepseek-v4-flash`).
 - **`src/telegram/`**: el bot (botones de confirmación, scheduler de compras programadas).
 - **BNB Agent Studio**: aporta la wallet del agente, su identidad onchain **ERC-8004**, el LLM que se autofinancia (Pieverse) y una cara pública **A2A / x402** para que otros agentes compren el _análisis pre-compra_ (precio, brecha, liquidez y horario para un monto dado).
 
@@ -115,10 +128,16 @@ flowchart LR
 - [x] Dominio: canastas, rebalanceo, horario de mercado, límites de seguridad
 - [x] Agente: intérprete en español, mejor emisor, simulación, confirmación, vencimiento de cotizaciones, permisos
 - [x] Bot de Telegram con confirmación por botones y compras programadas (DCA)
-- [x] 43 tests automáticos
-- [ ] Conexión a Binance Web3 API (RWA Data, Trading, Transaction, Wallet)
-- [ ] Integración con BNB Agent Studio (wallet, ERC-8004, LLM Pieverse, cara A2A / x402)
-- [ ] Deploy en mainnet y demo en video
+- [x] Catálogo real de acciones tokenizadas en BSC (Ondo y bStocks) y precios onchain en vivo
+- [x] Precio de la acción en bolsa en tiempo real (Yahoo Finance + respaldo de Binance)
+- [x] IA con `deepseek-v4-flash` vía AgentRouter: interpreta mensajes y analiza acciones con datos reales
+- [x] Trading con la Binance Web3 API: cotización, aprobación, swap u orden RFQ, simulación, envío con protección MEV
+- [x] Portafolio leído onchain (Multicall3 sobre todo el catálogo)
+- [x] Análisis pre-compra listo para el hook `runWork` de BNB Agent Studio ([guía](docs/AGENT_STUDIO.md))
+- [x] 77 tests automáticos
+- [ ] Probar con la API key de Binance y una wallet con fondos (primera compra real en mainnet)
+- [ ] Workspace de Agent Studio (`bag init`), deploy y registro ERC-8004
+- [ ] Deploy del bot y demo en video
 - [ ] Reporte de Developer Experience ([`DX_LOG.md`](DX_LOG.md))
 
 ## Cómo correrlo
@@ -129,10 +148,28 @@ Requisitos: Node.js 22 o superior.
 git clone https://github.com/invertilo/bnb-builder-day.git
 cd bnb-builder-day
 npm install
-npm test
+cp .env.example .env
 ```
 
-Las instrucciones para levantar el bot (`.env`, token de Telegram, wallet del agente y claves de API) se agregan cuando estén conectadas las APIs reales.
+Completa `.env`:
+
+| Variable | Para qué | ¿Obligatoria? |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | Token del bot (créalo con [@BotFather](https://t.me/BotFather)) | Sí |
+| `TELEGRAM_TRADER_IDS` | IDs de Telegram que pueden operar (el bot te dice tu ID) | Para operar |
+| `LLM_API_KEY` | Clave de AgentRouter para `deepseek-v4-flash` | Para la IA |
+| `BINANCE_API_KEY` / `BINANCE_API_SECRET` | [Binance Web3 dev portal](https://web3.binance.com/en/dev-portal) con Trading, Market, Wallet y Transaction | Para operar |
+| `AGENT_PRIVATE_KEY` | Wallet del agente. Créala con `npm run wallet:new` | Para operar |
+
+Sin las claves de Binance o sin wallet, el bot funciona en **modo solo lectura**: precios, análisis y preguntas.
+
+```bash
+npm run check NVDA 25   # diagnóstico: catálogo, precio en bolsa, IA, firma Binance, wallet y cotización (no ejecuta nada)
+npm run dev             # levanta el bot de Telegram
+npm test                # 77 tests
+```
+
+Para operar, la wallet del agente necesita USDT (Ondo pide órdenes de ~20 USD como mínimo) y un poco de BNB para gas, en BNB Smart Chain.
 
 ## Estructura
 
@@ -142,6 +179,19 @@ src/
 │   ├── intents.ts      # intérprete de frases en español → órdenes estructuradas
 │   ├── prompts.ts      # instrucciones del LLM (sin recomendaciones de inversión)
 │   └── service.ts      # orquestador: cotiza, simula, aplica límites y confirma
+├── binance/
+│   ├── auth.ts         # cliente firmado (HMAC) de la Binance Web3 API
+│   ├── market.ts       # catálogo, precio onchain vs bolsa, estado del emisor
+│   ├── public.ts       # endpoints públicos de Binance Wallet
+│   └── trader.ts       # cotización, aprobación, swap / RFQ, simulación, portafolio
+├── llm/openai-compatible.ts  # AgentRouter · deepseek-v4-flash
+├── stocks/quotes.ts    # precio en bolsa en tiempo real
+├── studio/run-work.ts  # análisis pre-compra para BNB Agent Studio
+├── wallet/signer.ts    # firma local (viem)
+├── scripts/            # check (diagnóstico) y new-wallet
+├── app.ts              # arma todo según el .env (con modo solo lectura)
+├── config.ts           # validación del .env
+├── index.ts            # entrada del bot
 ├── domain/
 │   ├── baskets.ts      # canastas y pesos
 │   ├── market-hours.ts # horario y feriados de la bolsa de EE.UU.
