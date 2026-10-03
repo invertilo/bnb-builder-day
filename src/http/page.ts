@@ -16,7 +16,7 @@ const RAW_PAGE = String.raw`<!doctype html>
 <meta property="og:type" content="website" />
 <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23F0B90B'/%3E%3Cpath d='M6 15.5l4-4 3 3 5-5.5' fill='none' stroke='%231d1d1f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M14.5 9h3.5v3.5' fill='none' stroke='%231d1d1f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
 <style>
   :root {
     --bg: #fbfbfd; --bg-2: #f5f5f7; --surface: #ffffff; --text: #1d1d1f; --muted: #6e6e73;
@@ -43,6 +43,17 @@ const RAW_PAGE = String.raw`<!doctype html>
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
   @media (min-width: 720px) { .wrap { padding: 0 28px; } }
 
+  /* ── Íconos SVG (trazo fino, se dibujan al aparecer) ───────── */
+  .ico { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .ico.inline { width: 1.1em; height: 1.1em; vertical-align: -0.2em; margin-right: .15em; }
+  .ico.draw { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .in .ico.draw, .ico.draw.go { animation: draw 1.2s var(--spring) forwards; animation-delay: calc(var(--i, 0) * 80ms + 250ms); }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .ico.status { stroke: none; }
+  .ico.up { fill: var(--up); } .ico.down { fill: var(--down); }
+  .logo { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--accent); color: #1d1d1f; font-size: 18px; }
+  .logo .ico { stroke-width: 2.2; }
+
   /* ── Barra translúcida ─────────────────────────────────────── */
   .nav { position: sticky; top: 0; z-index: 50; background: var(--glass);
     -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
@@ -50,7 +61,7 @@ const RAW_PAGE = String.raw`<!doctype html>
   .nav.scrolled { border-bottom-color: var(--border); }
   .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 52px; gap: 16px; }
   .brand { font-weight: 600; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
-  .brand i { font-style: normal; font-size: 18px; }
+  .brand .logo { width: 26px; height: 26px; border-radius: 7px; font-size: 16px; }
   .links { display: none; gap: 24px; font-size: 13px; color: var(--muted); }
   .links a:hover { color: var(--text); }
   @media (min-width: 760px) { .links { display: flex; } }
@@ -104,7 +115,12 @@ const RAW_PAGE = String.raw`<!doctype html>
   .card::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s ease;
     background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(240,185,11,.16), transparent 45%); }
   .card:hover::before { opacity: 1; }
-  .card .icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: var(--chip); margin-bottom: 14px; }
+  .card .icon { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 24px; margin-bottom: 16px;
+    color: var(--tint, var(--accent)); background: color-mix(in srgb, var(--tint, var(--accent)) 14%, transparent);
+    transition: transform .5s var(--spring); }
+  .card .icon .ico { transition: transform .5s var(--spring); }
+  .card:hover .icon { transform: translateY(-2px) scale(1.06); }
+  .card:hover .icon .ico { transform: rotate(-8deg); }
   .card h3 { font-size: 21px; line-height: 1.2; letter-spacing: -.018em; margin: 0 0 6px; }
   .card p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
 
@@ -158,7 +174,8 @@ const RAW_PAGE = String.raw`<!doctype html>
   .steps b { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: #fff; background: var(--tg); }
   .phone { max-width: 380px; width: 100%; margin: 0 auto; border-radius: 36px; padding: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
   .phone-top { display: flex; align-items: center; gap: 10px; padding: 6px 8px 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
-  .phone-top .av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); font-size: 18px; }
+  .phone-top .av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #1d1d1f; font-size: 18px; }
+  .phone-top .av .ico { stroke-width: 2.2; }
   .phone-top b { display: block; font-size: 15px; }
   .phone-top small { color: var(--muted); font-size: 12px; }
   .chat { display: grid; gap: 8px; min-height: 360px; align-content: start; }
@@ -168,7 +185,7 @@ const RAW_PAGE = String.raw`<!doctype html>
   .msg.me { justify-self: end; background: var(--tg); color: #fff; border-bottom-right-radius: 6px; }
   .msg.bot { justify-self: start; background: var(--bg-2); border-bottom-left-radius: 6px; }
   .kb { display: flex; gap: 6px; margin-top: 8px; }
-  .kb span { flex: 1; text-align: center; font-size: 13px; font-weight: 600; padding: 7px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); }
+  .kb span { display: flex; align-items: center; justify-content: center; gap: 4px; flex: 1; text-align: center; font-size: 13px; font-weight: 600; padding: 7px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); }
   .note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 10px; }
 
   /* ── API ───────────────────────────────────────────────────── */
@@ -184,6 +201,8 @@ const RAW_PAGE = String.raw`<!doctype html>
     html { scroll-behavior: auto; }
     .reveal, .msg { transform: none !important; transition: opacity .25s ease; transition-delay: 0s; }
     .dot::after, .skeleton { animation: none; }
+    .ico.draw { stroke-dasharray: none; stroke-dashoffset: 0; animation: none !important; }
+    .card:hover .icon, .card:hover .icon .ico { transform: none; }
     .btn:active, .chip:active, .member:active { transform: none; }
   }
   @media (prefers-reduced-transparency: reduce) {
@@ -195,9 +214,35 @@ const RAW_PAGE = String.raw`<!doctype html>
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-chart" viewBox="0 0 24 24"><path pathLength="1" d="M4 4v16h16"/><path pathLength="1" d="M7.5 15l3.5-3.5 3 3 5-5.5"/><path pathLength="1" d="M15.5 9h3.5v3.5"/></symbol>
+  <symbol id="i-landmark" viewBox="0 0 24 24"><path pathLength="1" d="M3 9.5 12 4l9 5.5"/><path pathLength="1" d="M5.5 10.5v7M10 10.5v7M14 10.5v7M18.5 10.5v7"/><path pathLength="1" d="M3 20.5h18"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle pathLength="1" cx="12" cy="12" r="8.5"/><path pathLength="1" d="M14.6 9.6c-.5-.8-1.5-1.3-2.6-1.3-1.4 0-2.5.8-2.5 1.9 0 2.6 5.2 1.3 5.2 3.8 0 1.1-1.1 1.9-2.6 1.9-1.1 0-2.1-.5-2.7-1.4M12 6.6v1.6M12 15.9v1.5"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path pathLength="1" d="M19.5 14.6A7.9 7.9 0 1 1 9.4 4.5a6.3 6.3 0 0 0 10.1 10.1Z"/></symbol>
+  <symbol id="i-bars" viewBox="0 0 24 24"><path pathLength="1" d="M5 19v-5M10 19V8M15 19v-8M20 19v-3"/><path pathLength="1" d="M3 21h18"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path pathLength="1" d="M11 3.5l1.9 4.9 4.9 1.9-4.9 1.9L11 17.1l-1.9-4.9-4.9-1.9 4.9-1.9z"/><path pathLength="1" d="M18.5 14.5l.8 2.1 2.2.9-2.2.8-.8 2.2-.9-2.2-2.1-.8 2.1-.9z"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path pathLength="1" d="M12 4v16M8.5 20h7M5 7.5h14"/><path pathLength="1" d="M5 7.5 2.5 13a2.6 2.6 0 0 0 5 0Z"/><path pathLength="1" d="M19 7.5 16.5 13a2.6 2.6 0 0 0 5 0Z"/></symbol>
+  <symbol id="i-pie" viewBox="0 0 24 24"><path pathLength="1" d="M11 4.1A8.5 8.5 0 1 0 19.9 13H11z"/><path pathLength="1" d="M14 3.2A8 8 0 0 1 20.8 10H14z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path pathLength="1" d="M12 3.2 19 6v5.3c0 4.4-2.9 8-7 9.6-4.1-1.6-7-5.2-7-9.6V6z"/><path pathLength="1" d="M8.8 12.2l2.2 2.2 4.2-4.4"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect pathLength="1" x="6" y="6" width="12" height="12" rx="2.6"/><rect pathLength="1" x="9.5" y="9.5" width="5" height="5" rx="1.1"/><path pathLength="1" d="M9.5 2.5v2.5M14.5 2.5v2.5M9.5 19v2.5M14.5 19v2.5M2.5 9.5H5M2.5 14.5H5M19 9.5h2.5M19 14.5h2.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path pathLength="1" d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path pathLength="1" d="M12 4 2.8 19.5h18.4z"/><path pathLength="1" d="M12 10v4.2M12 16.9v.1"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><circle pathLength="1" cx="12" cy="12" r="8.5"/><path pathLength="1" d="M10 9v6M14 9v6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect pathLength="1" x="5" y="10.5" width="14" height="10" rx="2.2"/><path pathLength="1" d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></symbol>
+  <symbol id="i-block" viewBox="0 0 24 24"><circle pathLength="1" cx="12" cy="12" r="8.5"/><path pathLength="1" d="M7.8 12h8.4"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path pathLength="1" d="M6 3.5h12v17l-3-1.8-3 1.8-3-1.8-3 1.8z"/><path pathLength="1" d="M9 8.5h6M9 12h6M9 15.5h3.5"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path pathLength="1" d="M5 8h13.5M15.5 5l3 3-3 3"/><path pathLength="1" d="M19 16H5.5M8.5 13l-3 3 3 3"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path pathLength="1" d="M17 3l3 3-3 3"/><path pathLength="1" d="M4 11.5V10a4 4 0 0 1 4-4h12"/><path pathLength="1" d="M7 21l-3-3 3-3"/><path pathLength="1" d="M20 12.5V14a4 4 0 0 1-4 4H4"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path pathLength="1" d="M4 7.5h14.5a1.5 1.5 0 0 1 1.5 1.5v9.5a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 18.5z"/><path pathLength="1" d="M4 7.5 15 4.5v3"/><path pathLength="1" d="M16 13.8h.1"/></symbol>
+  <symbol id="i-basket" viewBox="0 0 24 24"><path pathLength="1" d="M3 10h18l-2 10H5z"/><path pathLength="1" d="M8 10l3.2-6M16 10l-3.2-6"/><path pathLength="1" d="M9.5 13.5v3.5M14.5 13.5v3.5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle pathLength="1" cx="12" cy="12" r="8.5"/><path pathLength="1" d="M12 11v5M12 8v.1"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle pathLength="1" cx="12" cy="12" r="8.5"/><path pathLength="1" d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5.5"/></symbol>
+</svg>
 <nav class="nav" id="nav">
   <div class="wrap">
-    <a class="brand" href="#top"><i>📈</i>Primera Acción</a>
+    <a class="brand" href="#top"><span class="logo"><svg class="ico" aria-hidden="true"><use href="#i-chart"/></svg></span>Primera Acción</a>
     <div class="links">
       <a href="#precios">Precios</a>
       <a href="#probar">Probar</a>
@@ -226,7 +271,7 @@ const RAW_PAGE = String.raw`<!doctype html>
           <span><b>Jasid Moron</b><small>@jasiiid</small></span>
         </a>
       </div>
-      <div><span class="eyebrow">BNB Hack · Tokenized Stocks · Santa Cruz 🇧🇴</span></div>
+      <div><span class="eyebrow">BNB Hack · Tokenized Stocks · Santa Cruz, Bolivia</span></div>
       <h1>Tu primera acción de <span>Wall Street</span>.</h1>
       <p class="lead">Compra acciones tokenizadas de Apple, NVIDIA o Tesla con USDT, desde Telegram y en español. Con el precio real de la bolsa y confirmación antes de cada operación.</p>
       <div class="ctas">
@@ -283,12 +328,12 @@ const RAW_PAGE = String.raw`<!doctype html>
         <p class="sub">Todo lo que necesitas para invertir en acciones tokenizadas, sin pelearte con wallets, DEX ni slippage.</p>
       </div>
       <div class="grid three">
-        <div class="reveal" style="--i:0"><article class="card tilt"><div class="icon">🏛️</div><h3>Precio real de la bolsa</h3><p>Yahoo Finance en tiempo real, con pre y post mercado, comparado con el precio onchain de cada token.</p></article></div>
-        <div class="reveal" style="--i:1"><article class="card tilt"><div class="icon">🧠</div><h3>Análisis con IA</h3><p>DeepSeek vía OpenRouter explica cada acción con datos reales. Si la IA no responde, el agente escribe el análisis con sus propias reglas.</p></article></div>
-        <div class="reveal" style="--i:2"><article class="card tilt"><div class="icon">⚖️</div><h3>El mejor emisor</h3><p>Si la acción existe en Ondo y en bStocks, cotiza en los dos y elige el que da mejor precio frente a la bolsa.</p></article></div>
-        <div class="reveal" style="--i:3"><article class="card tilt"><div class="icon">🧺</div><h3>Canastas y DCA</h3><p>Arma tu canasta (IA, chips, índices), invierte en ella de una vez y programa compras periódicas que siempre te confirma.</p></article></div>
-        <div class="reveal" style="--i:4"><article class="card tilt"><div class="icon">🛡️</div><h3>Nada sin tu confirmación</h3><p>Simulación, límites por operación y por día, slippage máximo y aviso si el precio onchain se aleja de la bolsa.</p></article></div>
-        <div class="reveal" style="--i:5"><article class="card tilt"><div class="icon">🤖</div><h3>Hecho para agentes</h3><p>Agente de BNB Agent Studio con identidad ERC-8004 y una API abierta para que otros agentes de IA usen el análisis.</p></article></div>
+        <div class="reveal" style="--i:0"><article class="card tilt" style="--tint:#0a84ff"><div class="icon"><svg class="ico draw" aria-hidden="true"><use href="#i-landmark"/></svg></div><h3>Precio real de la bolsa</h3><p>Yahoo Finance en tiempo real, con pre y post mercado, comparado con el precio onchain de cada token.</p></article></div>
+        <div class="reveal" style="--i:1"><article class="card tilt" style="--tint:#bf5af2"><div class="icon"><svg class="ico draw" aria-hidden="true"><use href="#i-sparkles"/></svg></div><h3>Análisis con IA</h3><p>DeepSeek vía OpenRouter explica cada acción con datos reales. Si la IA no responde, el agente escribe el análisis con sus propias reglas.</p></article></div>
+        <div class="reveal" style="--i:2"><article class="card tilt" style="--tint:#f0b90b"><div class="icon"><svg class="ico draw" aria-hidden="true"><use href="#i-scale"/></svg></div><h3>El mejor emisor</h3><p>Si la acción existe en Ondo y en bStocks, cotiza en los dos y elige el que da mejor precio frente a la bolsa.</p></article></div>
+        <div class="reveal" style="--i:3"><article class="card tilt" style="--tint:#30b0c7"><div class="icon"><svg class="ico draw" aria-hidden="true"><use href="#i-pie"/></svg></div><h3>Canastas y DCA</h3><p>Arma tu canasta (IA, chips, índices), invierte en ella de una vez y programa compras periódicas que siempre te confirma.</p></article></div>
+        <div class="reveal" style="--i:4"><article class="card tilt" style="--tint:#34c759"><div class="icon"><svg class="ico draw" aria-hidden="true"><use href="#i-shield"/></svg></div><h3>Nada sin tu confirmación</h3><p>Simulación, límites por operación y por día, slippage máximo y aviso si el precio onchain se aleja de la bolsa.</p></article></div>
+        <div class="reveal" style="--i:5"><article class="card tilt" style="--tint:#5e5ce6"><div class="icon"><svg class="ico draw" aria-hidden="true"><use href="#i-cpu"/></svg></div><h3>Hecho para agentes</h3><p>Agente de BNB Agent Studio con identidad ERC-8004 y una API abierta para que otros agentes de IA usen el análisis.</p></article></div>
       </div>
     </div>
   </section>
@@ -310,16 +355,16 @@ const RAW_PAGE = String.raw`<!doctype html>
       </div>
       <div class="reveal" style="--i:1">
         <div class="phone tilt" data-tilt="3" id="phone">
-          <div class="phone-top"><div class="av">📈</div><div><b>Primera Acción</b><small>@TuPrimeraAccionBot · bot</small></div></div>
+          <div class="phone-top"><div class="av"><svg class="ico" aria-hidden="true"><use href="#i-chart"/></svg></div><div><b>Primera Acción</b><small>@TuPrimeraAccionBot · bot</small></div></div>
           <div class="chat" id="chat">
             <div class="msg me">compra 25 de apple</div>
-            <div class="msg bot">🧾 <strong>Comprar 25,00 USDT de AAPL</strong>
-🟢 AAPLB (bStocks) ≈ 0,0749 tokens
+            <div class="msg bot"><svg class="ico inline" aria-hidden="true"><use href="#i-receipt"/></svg><strong>Comprar 25,00 USDT de AAPL</strong>
+<svg class="ico inline status up" aria-hidden="true"><use href="#i-dot"/></svg>AAPLB (bStocks) ≈ 0,0749 tokens
 precio 333,70 USDT · −0,03% vs bolsa
-🌙 Bolsa cerrada (fin de semana)
-✅ Chequeos previos OK. ¿Confirmas?<div class="kb"><span>✅ Confirmar</span><span>✖️ Cancelar</span></div></div>
-            <div class="msg me">✅ Confirmar</div>
-            <div class="msg bot">✅ Compraste AAPLB por 25,00 USDT — ver transacción</div>
+<svg class="ico inline" aria-hidden="true"><use href="#i-moon"/></svg>Bolsa cerrada (fin de semana)
+<svg class="ico inline" aria-hidden="true"><use href="#i-check"/></svg>Chequeos previos OK. ¿Confirmas?<div class="kb"><span><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Confirmar</span><span><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg>Cancelar</span></div></div>
+            <div class="msg me">Confirmar</div>
+            <div class="msg bot"><svg class="ico inline" aria-hidden="true"><use href="#i-check"/></svg>Compraste AAPLB por 25,00 USDT — ver transacción</div>
           </div>
           <p class="note">Ejemplo ilustrativo: la cotización y la ruta varían.</p>
         </div>
@@ -461,6 +506,24 @@ precio 333,70 USDT · −0,03% vs bolsa
   document.getElementById("curl").textContent = "curl -X POST " + location.origin + "/api/analyze -H 'Content-Type: application/json' -d '{\"prompt\":\"NVDA 25\"}'";
   var bt = String.fromCharCode(96); // backtick, sin escribirlo dentro de String.raw
   var tick = new RegExp(bt + "([^" + bt + "\\n]+)" + bt, "g");
+  // Las respuestas de la API traen emojis (el bot de Telegram los usa); en la web se muestran como íconos.
+  var EMOJI_ICON = {}, codes = {
+    chart: [0x1F4C8], landmark: [0x1F3DB], coin: [0x1FA99], moon: [0x1F319], bars: [0x1F4CA], sparkles: [0x1F9E0],
+    "dot up": [0x1F7E2], "dot down": [0x1F534], check: [0x2705, 0x1F44C], alert: [0x26A0, 0x1F635], pause: [0x23F8],
+    lock: [0x1F512], block: [0x26D4], receipt: [0x1F9FE], swap: [0x1F4B1], repeat: [0x1F501], wallet: [0x1F4BC],
+    basket: [0x1F9FA], info: [0x2139], x: [0x2716, 0x274C], clock: [0x23F3, 0x23F1]
+  };
+  Object.keys(codes).forEach(function (name) { codes[name].forEach(function (cp) { EMOJI_ICON[String.fromCodePoint(cp)] = name; }); });
+  var pictographs = /(\p{Extended_Pictographic}|\p{Regional_Indicator}{2})\uFE0F?/gu;
+  function iconize(html) {
+    return html.replace(pictographs, function (m) {
+      var name = EMOJI_ICON[m.replace(/\uFE0F/g, "")];
+      if (!name) return "";
+      var parts = name.split(" ");
+      var cls = parts.length > 1 ? "ico inline status " + parts[1] : "ico inline";
+      return '<svg class="' + cls + '" aria-hidden="true"><use href="#i-' + parts[0] + '"/></svg>';
+    });
+  }
   function md(s) {
     return esc(s)
       .replace(/\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
@@ -469,13 +532,14 @@ precio 333,70 USDT · −0,03% vs bolsa
       .replace(/(^|[\s(])_([^_\n]+)_/g, "$1<em>$2</em>")
       .replace(tick, "<code>$1</code>");
   }
+  function render(s) { return iconize(md(s)); }
   function run(prompt) {
     if (!prompt.trim()) return;
     q.value = prompt; go.disabled = true;
     out.className = "result empty"; out.textContent = "Consultando la bolsa y BNB Chain…";
     fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: prompt }) })
       .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || "Error " + r.status); return d; }); })
-      .then(function (d) { out.className = "result"; out.innerHTML = md(d.result); })
+      .then(function (d) { out.className = "result"; out.innerHTML = render(d.result); })
       .catch(function (e) { out.className = "result error"; out.textContent = e.message; })
       .then(function () { go.disabled = false; });
   }
