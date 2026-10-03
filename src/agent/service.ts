@@ -88,7 +88,7 @@ export class PrimeraAccion {
       case "help":
         return { text: es.HELP };
       case "unknown":
-        return { text: "No entendí 🤔. Prueba con `compra 10 de apple` o escribe /ayuda." };
+        return { text: "No entendí 🤔. Prueba con `precio de apple`, `analiza nvidia` o escribe /start para ver la guía." };
       case "explain":
         return this.explain(intent.question);
       case "price":

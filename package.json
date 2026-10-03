@@ -1,7 +1,7 @@
 {
   "name": "primera-accion",
   "version": "0.1.0",
-  "description": "Agente en espa\u00f1ol para comprar acciones tokenizadas en BNB Chain desde Telegram.",
+  "description": "Agente en español para comprar acciones tokenizadas en BNB Chain desde Telegram.",
   "type": "module",
   "private": true,
   "scripts": {
@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@upstash/redis": "^1.39.0",
-    "@vercel/functions": "^3.9.11",
     "grammy": "^1.46.0",
     "viem": "^2.57.2",
     "zod": "^4.6.5"

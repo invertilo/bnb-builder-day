@@ -5,7 +5,8 @@
  *
  * 1. Lee TELEGRAM_BOT_TOKEN de tu .env (si falta, te lo pide con la entrada oculta y lo guarda) y lo valida con Telegram.
  * 2. Genera TELEGRAM_WEBHOOK_SECRET y CRON_SECRET si faltan (los guarda en .env).
- * 3. Sube esas variables (y TELEGRAM_TRADER_IDS si existe) a Vercel como secretos de Production.
+ * 3. Sube esas variables a Vercel como secretos de Production, más las opcionales que haya en .env
+ *    (TELEGRAM_TRADER_IDS, BINANCE_API_KEY/SECRET, AGENT_PRIVATE_KEY, LLM_API_KEY, MAX_*).
  * 4. Redespliega producción y conecta el webhook del bot.
  * Nunca imprime secretos. Es idempotente: puedes volver a correrlo (por ejemplo, después de agregar tu ID).
  */
@@ -47,6 +48,11 @@ const vars: Record<string, string> = {
 };
 const traders = process.env.TELEGRAM_TRADER_IDS?.trim();
 if (traders) vars.TELEGRAM_TRADER_IDS = traders;
+// Lo que el bot guía a configurar desde /config: si está en .env, se sube también.
+for (const name of ["BINANCE_API_KEY", "BINANCE_API_SECRET", "AGENT_PRIVATE_KEY", "LLM_API_KEY", "MAX_TRADE_USD", "MAX_DAILY_USD", "MAX_SLIPPAGE_BPS"]) {
+  const value = process.env[name]?.trim();
+  if (value) vars[name] = value;
+}
 
 for (const [name, value] of Object.entries(vars)) {
   vercel(["env", "rm", name, "production", "-y"], undefined, true); // si no existía, no pasa nada

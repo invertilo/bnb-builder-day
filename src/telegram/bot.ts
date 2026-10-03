@@ -1,16 +1,59 @@
 import { Bot, GrammyError, InlineKeyboard, type Context } from "grammy";
 import type { PrimeraAccion, Reply } from "../agent/service.js";
+import { configStatus, configStep, TRY_PROMPTS, welcome, type BotStatus, type Screen } from "./onboarding.js";
 
 export interface BotOptions {
   token: string;
   /** IDs de Telegram que pueden operar con la wallet del agente. El resto solo consulta precios y pregunta. */
   traders: Set<number>;
+  /** Estado de la configuración (sin secretos) para el onboarding y /config. */
+  status: BotStatus;
 }
 
 export function createBot(agent: PrimeraAccion, opts: BotOptions): Bot {
   const bot = new Bot(opts.token);
 
   bot.catch((err) => console.error("[telegram]", err.error));
+
+  const canTrade = (id: number | undefined) => id !== undefined && opts.traders.has(id);
+
+  // /start: bienvenida con los primeros pasos y botones para probar sin escribir.
+  bot.command(["start", "ayuda", "help"], async (ctx) => {
+    await sendScreen(ctx, welcome(ctx.from?.first_name, canTrade(ctx.from?.id), opts.status));
+  });
+
+  // /config: checklist de configuración y guía paso a paso.
+  bot.command(["config", "configurar"], async (ctx) => {
+    await sendScreen(ctx, configStatus(ctx.from!.id, canTrade(ctx.from?.id), opts.status));
+  });
+
+  // Botones del onboarding que ejecutan un ejemplo ("Ver un precio", "Analizar una acción"…).
+  bot.callbackQuery(/^go:(\w+)$/, async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const prompt = TRY_PROMPTS[ctx.match[1]!];
+    if (!prompt) return;
+    await ctx.replyWithChatAction("typing");
+    try {
+      await send(ctx, await agent.handle(ctx.from.id, prompt, canTrade(ctx.from.id)));
+    } catch (err) {
+      console.error("[agent]", err);
+      await send(ctx, { text: `😵 Algo falló: ${(err as Error).message}` });
+    }
+  });
+
+  // Navegación de la configuración: edita el mismo mensaje para que se sienta como una app.
+  bot.callbackQuery(/^cfg:(\w+)$/, async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const step = ctx.match[1]!;
+    const userId = ctx.from.id;
+    const screen =
+      step === "status"
+        ? configStatus(userId, canTrade(userId), opts.status)
+        : step === "inicio"
+          ? welcome(ctx.from.first_name, canTrade(userId), opts.status)
+          : configStep(step, userId, canTrade(userId), opts.status);
+    if (screen) await editScreen(ctx, screen);
+  });
 
   // /id: muestra el ID de Telegram para agregarlo a TELEGRAM_TRADER_IDS.
   bot.command("id", async (ctx) => {
@@ -27,7 +70,13 @@ export function createBot(agent: PrimeraAccion, opts: BotOptions): Bot {
     await ctx.replyWithChatAction("typing");
 
     try {
-      await send(ctx, await agent.handle(userId, text, opts.traders.has(userId)));
+      const reply = await agent.handle(userId, text, opts.traders.has(userId));
+      // Si quiso operar sin estar autorizado, le ofrecemos la guía de configuración.
+      if (reply.text.startsWith("🔒")) {
+        await sendScreen(ctx, { text: reply.text, keyboard: new InlineKeyboard().text("⚙️ Ver cómo configurarlo", "cfg:status") });
+      } else {
+        await send(ctx, reply);
+      }
     } catch (err) {
       console.error("[agent]", err);
       await send(ctx, { text: `😵 Algo falló: ${(err as Error).message}` });
@@ -71,8 +120,32 @@ async function send(ctx: Context, reply: Reply): Promise<void> {
   }
 }
 
+async function sendScreen(ctx: Context, screen: Screen): Promise<void> {
+  try {
+    await ctx.reply(screen.text, { parse_mode: "Markdown", reply_markup: screen.keyboard, link_preview_options: { is_disabled: true } });
+  } catch (err) {
+    if (err instanceof GrammyError && err.description.includes("parse entities")) {
+      await ctx.reply(screen.text, { reply_markup: screen.keyboard });
+    } else {
+      throw err;
+    }
+  }
+}
+
+async function editScreen(ctx: Context, screen: Screen): Promise<void> {
+  try {
+    await ctx.editMessageText(screen.text, { parse_mode: "Markdown", reply_markup: screen.keyboard, link_preview_options: { is_disabled: true } });
+  } catch (err) {
+    // "message is not modified" (tocó Revisar sin cambios) no es un error; si no se puede editar, mandamos uno nuevo.
+    if (err instanceof GrammyError && err.description.includes("not modified")) return;
+    await sendScreen(ctx, screen);
+  }
+}
+
 /** Comandos que muestra Telegram en el menú del bot. */
 export const BOT_COMMANDS = [
+  { command: "start", description: "Empezar: guía rápida y ejemplos" },
+  { command: "config", description: "Configurar el bot paso a paso" },
   { command: "precio", description: "Precio en bolsa y de los tokens. Ej: /precio apple" },
   { command: "analizar", description: "Análisis con IA de una acción. Ej: /analizar nvidia" },
   { command: "comprar", description: "Comprar con USDT. Ej: /comprar 25 tesla" },

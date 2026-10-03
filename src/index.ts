@@ -1,5 +1,5 @@
 import { GrammyError } from "grammy";
-import { buildApp } from "./app.js";
+import { botStatus, buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { BOT_COMMANDS, createBot, startDcaScheduler } from "./telegram/bot.js";
 
@@ -17,7 +17,7 @@ try {
   process.exit(1);
 }
 const app = buildApp(cfg);
-const bot = createBot(app.agent, { token: cfg.TELEGRAM_BOT_TOKEN!, traders: cfg.TELEGRAM_TRADER_IDS });
+const bot = createBot(app.agent, { token: cfg.TELEGRAM_BOT_TOKEN!, traders: cfg.TELEGRAM_TRADER_IDS, status: botStatus(cfg, app) });
 
 try {
   await bot.init();

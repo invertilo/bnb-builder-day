@@ -14,8 +14,6 @@ export interface HttpDeps {
   runDca: (() => Promise<number>) | null;
   /** Contador con ventana para rate limit. */
   hit(key: string, windowSec: number): Promise<number>;
-  /** En Vercel mantiene viva la función después de responder (Fluid compute). */
-  waitUntil(promise: Promise<unknown>): void;
   secrets: { telegramWebhook?: string; cron?: string };
   limits: { perMinute: number; perDay: number };
   now?: () => Date;
@@ -84,10 +82,14 @@ export function createHandler(deps: HttpDeps): (req: Request) => Promise<Respons
     const update = await req.json().catch(() => null);
     if (!update) return json({ error: "update inválido" }, 400);
 
-    // Respondemos al instante para que Telegram no reintente mientras se ejecuta una compra
-    // (puede tardar más de un minuto); el trabajo sigue con waitUntil.
-    const handle = deps.handleTelegramUpdate;
-    deps.waitUntil(handle(update).catch((err) => console.error("[telegram]", err)));
+    // Procesamos ANTES de responder: el runtime Bun de Vercel congela la función apenas responde
+    // (waitUntil no la mantiene viva), así que el trabajo en segundo plano se perdía y el bot no contestaba.
+    // Si una compra tarda y Telegram reintenta, la confirmación ya se tomó (GETDEL) y no se ejecuta dos veces.
+    try {
+      await deps.handleTelegramUpdate(update);
+    } catch (err) {
+      console.error("[telegram]", err);
+    }
     return json({ ok: true });
   }
 

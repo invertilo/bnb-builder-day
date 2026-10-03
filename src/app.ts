@@ -10,6 +10,7 @@ import type { Llm, MarketData, Trader } from "./ports.js";
 import { BinanceStockQuotes, FallbackQuotes, YahooQuotes } from "./stocks/quotes.js";
 import { FileStore, type StateStore } from "./store.js";
 import { RedisStore } from "./store-redis.js";
+import type { BotStatus } from "./telegram/onboarding.js";
 import { bscPublicClient, LocalSigner } from "./wallet/signer.js";
 
 export const READ_ONLY_REASON =
@@ -99,4 +100,15 @@ export function buildApp(cfg: Config, env: NodeJS.ProcessEnv = process.env): App
   });
 
   return { agent, store, market, trader, llm, tradingEnabled, walletAddress };
+}
+
+/** Estado de la configuración que el bot muestra en /config (sin secretos). */
+export function botStatus(cfg: Config, app: App): BotStatus {
+  return {
+    ai: app.llm ? cfg.LLM_MODEL : null,
+    binance: Boolean(cfg.BINANCE_API_KEY && cfg.BINANCE_API_SECRET),
+    wallet: app.walletAddress,
+    limits: { maxTradeUsd: cfg.MAX_TRADE_USD, maxDailyUsd: cfg.MAX_DAILY_USD, maxSlippageBps: cfg.MAX_SLIPPAGE_BPS },
+    webUrl: cfg.LLM_APP_URL,
+  };
 }

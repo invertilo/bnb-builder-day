@@ -6,13 +6,11 @@ const WEBHOOK_SECRET = "s3cret-webhook-0123456789";
 const CRON_SECRET = "s3cret-cron-0123456789";
 
 let updates: unknown[];
-let background: Promise<unknown>[];
 let dcaRuns: number;
 let deps: HttpDeps;
 
 beforeEach(() => {
   updates = [];
-  background = [];
   dcaRuns = 0;
   const store = new FileStore("/tmp/no-se-usa.json");
   deps = {
@@ -25,7 +23,6 @@ beforeEach(() => {
     },
     runDca: async () => ++dcaRuns,
     hit: (k, w) => store.hit(k, w),
-    waitUntil: (p) => void background.push(p),
     secrets: { telegramWebhook: WEBHOOK_SECRET, cron: CRON_SECRET },
     limits: { perMinute: 3, perDay: 100 },
   };
@@ -76,18 +73,28 @@ describe("handler HTTP", () => {
     const h = createHandler(deps);
     const res = await h(req("/api/telegram", { method: "POST", body: JSON.stringify({ update_id: 1 }), headers: { "x-telegram-bot-api-secret-token": "otro" } }));
     expect(res.status).toBe(401);
-    expect(background).toHaveLength(0);
+    expect(updates).toHaveLength(0);
   });
 
-  it("webhook de Telegram: responde al instante y procesa con waitUntil", async () => {
+  it("webhook de Telegram: procesa el mensaje antes de responder", async () => {
     const h = createHandler(deps);
     const res = await h(
       req("/api/telegram", { method: "POST", body: JSON.stringify({ update_id: 7 }), headers: { "x-telegram-bot-api-secret-token": WEBHOOK_SECRET } }),
     );
     expect(res.status).toBe(200);
-    expect(updates).toHaveLength(0); // todavía procesando en segundo plano
-    await Promise.all(background);
-    expect(updates).toEqual([{ update_id: 7 }]);
+    expect(updates).toEqual([{ update_id: 7 }]); // ya procesado cuando Telegram recibe el 200
+  });
+
+  it("webhook de Telegram: si el procesamiento falla igual responde 200 (Telegram no reintenta en bucle)", async () => {
+    const err = console.error;
+    console.error = () => {};
+    try {
+      const h = createHandler({ ...deps, handleTelegramUpdate: async () => { throw new Error("falló"); } });
+      const res = await h(req("/api/telegram", { method: "POST", body: "{}", headers: { "x-telegram-bot-api-secret-token": WEBHOOK_SECRET } }));
+      expect(res.status).toBe(200);
+    } finally {
+      console.error = err;
+    }
   });
 
   it("webhook sin secreto configurado no acepta nada", async () => {

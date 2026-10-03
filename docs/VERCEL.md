@@ -6,7 +6,7 @@ El agente corre en Vercel como una sola función con `Bun.serve()` (`src/server.
 |---|---|
 | `GET /` | Página para probar el análisis sin Telegram (sirve como link de demo para el jurado) |
 | `POST /api/analyze` · `GET /api/analyze?prompt=` | Análisis pre-compra para personas y **otros agentes** (`{"prompt":"NVDA 25"}` → `{"result": "…"}`) con CORS y rate limit |
-| `POST /api/telegram` | Webhook del bot. Valida `X-Telegram-Bot-Api-Secret-Token`, responde 200 al instante y procesa con `waitUntil` |
+| `POST /api/telegram` | Webhook del bot. Valida `X-Telegram-Bot-Api-Secret-Token`, procesa el mensaje y responde 200 |
 | `GET /api/cron/dca` | Compras programadas (DCA), llamado por Vercel Cron con `Authorization: Bearer $CRON_SECRET` |
 | `GET /api/info` · `GET /health` | Estado del agente |
 
@@ -19,7 +19,7 @@ El agente corre en Vercel como una sola función con `Bun.serve()` (`src/server.
 | Estado en `data/state.json` | Canastas, DCA e historial en Redis |
 | DCA con `setInterval` | **Vercel Cron**, una vez por día (`0 14 * * *` = 10:00 en Bolivia) |
 
-El webhook responde enseguida para que Telegram no reintente mientras se ejecuta una compra (una orden RFQ puede tardar más de un minuto). El trabajo sigue en segundo plano con `waitUntil` de `@vercel/functions`, dentro del tiempo máximo de la función (300 s por defecto con Fluid compute).
+El webhook procesa el mensaje **antes** de responder. Probamos responder al instante y seguir con `waitUntil`, pero el runtime Bun de Vercel (beta) congela la función apenas responde y el bot no contestaba. Si una compra tarda tanto que Telegram reintenta, la confirmación ya se tomó de Redis (`GETDEL`) y no se ejecuta dos veces.
 
 ## Lo que hizo falta para que el preset de Bun funcione
 
