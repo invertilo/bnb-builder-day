@@ -1,7 +1,5 @@
 # Primera Acción 🇧🇴
 
-[![CI](https://github.com/invertilo/bnb-builder-day/actions/workflows/ci.yml/badge.svg)](https://github.com/invertilo/bnb-builder-day/actions/workflows/ci.yml)
-
 **Tu primera acción de Wall Street desde Telegram, en español, con USDT.**
 
 Un agente de IA que te deja comprar acciones tokenizadas de empresas de EE.UU. (Apple, NVIDIA, Tesla, el S&P 500…) en BNB Smart Chain escribiendo como hablas: _"compra 10 de nvidia"_. Proyecto para el **BNB Hack: Tokenized Stocks Edition**, nacido en las **BNB Builder Sessions de Santa Cruz, Bolivia**.
