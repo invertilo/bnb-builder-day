@@ -18,6 +18,7 @@ beforeEach(() => {
   deps = {
     analyze: async (prompt) => `análisis de ${prompt}`,
     info: async () => ({ name: "Primera Acción", telegram: "@primera_bot" }),
+    quotes: async (tickers) => tickers.map((t) => ({ ticker: t })),
     handleTelegramUpdate: async (u) => {
       await new Promise((r) => setTimeout(r, 20));
       updates.push(u);
@@ -60,6 +61,15 @@ describe("handler HTTP", () => {
     expect((await call()).status).toBe(429);
     // Otra IP no se ve afectada.
     expect((await h(req("/api/analyze?prompt=TSLA", { headers: { "x-forwarded-for": "5.6.7.8" } }))).status).toBe(200);
+  });
+
+  it("/api/quotes devuelve las cards con cache de CDN y limita los tickers", async () => {
+    const h = createHandler(deps);
+    const res = await h(req("/api/quotes"));
+    expect((await res.json()).items).toEqual([{ ticker: "NVDA" }, { ticker: "AAPL" }, { ticker: "TSLA" }]);
+    expect(res.headers.get("cache-control")).toContain("s-maxage");
+    const custom = await (await h(req("/api/quotes?t=spy,qqq,<script>,AAPL,MSFT,AMZN"))).json();
+    expect(custom.items.map((i: { ticker: string }) => i.ticker)).toEqual(["SPY", "QQQ", "AAPL", "MSFT"]);
   });
 
   it("webhook de Telegram: rechaza sin el secreto", async () => {

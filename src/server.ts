@@ -9,6 +9,7 @@ import type { Update } from "grammy/types";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { createHandler } from "./http/handler.js";
+import { buildQuoteCards } from "./http/quotes.js";
 import { createStudioRunWork } from "./studio/run-work.js";
 import { createBot, sendDcaProposals } from "./telegram/bot.js";
 
@@ -27,6 +28,7 @@ function start(): (req: Request) => Promise<Response> {
 
   return createHandler({
     analyze: createStudioRunWork(app),
+    quotes: (tickers) => buildQuoteCards(app.market, tickers),
     info: async () => ({
       name: "Primera Acción",
       ai: app.llm ? cfg.LLM_MODEL : null,

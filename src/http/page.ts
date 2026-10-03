@@ -1,126 +1,508 @@
-/** Página pública: prueba el análisis pre-compra sin Telegram y muestra cómo lo llaman otros agentes. */
-export const PAGE_HTML = /* html */ `<!doctype html>
+/**
+ * Landing de Primera Acción. Estilo Apple: tipografía del sistema con tracking negativo en títulos,
+ * barra translúcida, cards con resorte críticamente amortiguado (interrumpible) que siguen al puntero,
+ * feedback al presionar y entradas escalonadas. Respeta reducir movimiento / transparencia.
+ * String.raw: las barras invertidas del JS de abajo se escriben tal cual (no usar backticks ni "${" adentro).
+ */
+const RAW_PAGE = String.raw`<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Primera Acción</title>
-<meta name="description" content="Agente en español para acciones tokenizadas de EE.UU. en BNB Chain: precio en bolsa en tiempo real, tokens de Ondo y bStocks, y análisis con IA." />
+<meta name="description" content="Tu primera acción de Wall Street en BNB Chain: precio real de la bolsa, tokens de Ondo y bStocks, análisis con IA y compras con USDT desde Telegram, en español." />
+<meta property="og:title" content="Primera Acción · Wall Street en BNB Chain, en español" />
+<meta property="og:description" content="Precio real de la bolsa, análisis con IA y compras de acciones tokenizadas con USDT desde Telegram (@TuPrimeraAccionBot)." />
+<meta property="og:type" content="website" />
+<meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>" />
 <style>
   :root {
-    --bg: #fafaf7; --surface: #ffffff; --text: #17181c; --muted: #5d6170; --border: #e6e4dc;
-    --accent: #f0b90b; --accent-ink: #1a1500; --code: #f3f1ea; --danger: #b42318;
+    --bg: #fbfbfd; --bg-2: #f5f5f7; --surface: #ffffff; --text: #1d1d1f; --muted: #6e6e73;
+    --border: rgba(0,0,0,.08); --shadow: 0 1px 2px rgba(0,0,0,.04), 0 12px 32px rgba(0,0,0,.07);
+    --accent: #f0b90b; --accent-ink: #1d1d1f; --tg: #229ed9; --up: #1f8f4e; --down: #d70015;
+    --glass: rgba(251,251,253,.72); --chip: rgba(0,0,0,.05); --code: #f5f5f7;
+    --spring: cubic-bezier(.2,.8,.2,1);
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #0f1013; --surface: #17191e; --text: #ecedf0; --muted: #9a9fad; --border: #2a2d35; --accent: #f0b90b; --accent-ink: #1a1500; --code: #1f2229; --danger: #ff8a80; }
+    :root {
+      --bg: #000000; --bg-2: #0b0b0d; --surface: #141416; --text: #f5f5f7; --muted: #a1a1a6;
+      --border: rgba(255,255,255,.09); --shadow: 0 1px 2px rgba(0,0,0,.6), 0 12px 32px rgba(0,0,0,.5);
+      --accent-ink: #1d1d1f; --up: #30d158; --down: #ff453a; --glass: rgba(0,0,0,.66); --chip: rgba(255,255,255,.08); --code: #1c1c1e;
+    }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 760px; margin: 0 auto; padding: 40px 16px 64px; }
-  header h1 { font-size: clamp(28px, 6vw, 40px); line-height: 1.1; margin: 0 0 8px; letter-spacing: -0.02em; }
-  header p { margin: 0; color: var(--muted); font-size: 18px; }
-  .badge { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--accent-ink); background: var(--accent); padding: 3px 8px; border-radius: 999px; margin-bottom: 14px; }
-  form { display: flex; gap: 8px; margin: 28px 0 12px; }
-  input { flex: 1; min-width: 0; font: inherit; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
-  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-  button { font: inherit; font-weight: 600; padding: 12px 18px; border-radius: 10px; border: 0; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
-  button:disabled { opacity: .6; cursor: progress; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip { font-size: 14px; font-weight: 500; padding: 6px 12px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 999px; }
-  .card { margin-top: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 64px; }
-  .card.empty { color: var(--muted); }
-  .card.error { color: var(--danger); }
-  h2 { font-size: 18px; margin: 40px 0 10px; }
-  pre { background: var(--code); border-radius: 10px; padding: 14px; overflow-x: auto; font-size: 13px; margin: 0; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  @media (min-width: 720px) { .wrap { padding: 0 28px; } }
+
+  /* ── Barra translúcida ─────────────────────────────────────── */
+  .nav { position: sticky; top: 0; z-index: 50; background: var(--glass);
+    -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid transparent; transition: border-color .3s ease; }
+  .nav.scrolled { border-bottom-color: var(--border); }
+  .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 52px; gap: 16px; }
+  .brand { font-weight: 600; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+  .brand i { font-style: normal; font-size: 18px; }
+  .links { display: none; gap: 24px; font-size: 13px; color: var(--muted); }
+  .links a:hover { color: var(--text); }
+  @media (min-width: 760px) { .links { display: flex; } }
+
+  /* ── Botones (respuesta al presionar, sin esperar al click) ── */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: inherit; font-weight: 600;
+    font-size: 15px; padding: 12px 20px; border-radius: 980px; border: 0; cursor: pointer; user-select: none;
+    -webkit-tap-highlight-color: transparent; transition: transform .1s ease-out, filter .2s ease, background .2s ease; }
+  .btn:active { transform: scale(.97); }
+  .btn.tg { background: var(--tg); color: #fff; }
+  .btn.tg:hover { filter: brightness(1.06); }
+  .btn.ghost { background: var(--chip); color: var(--text); }
+  .btn.small { font-size: 13px; padding: 7px 14px; }
+  .btn svg { width: 18px; height: 18px; flex: none; }
+
+  /* ── Hero ──────────────────────────────────────────────────── */
+  .hero { position: relative; padding: 40px 0 24px; text-align: center; overflow: hidden; }
+  .hero::before { content: ""; position: absolute; inset: -20% -10% auto; height: 520px; z-index: -1; pointer-events: none;
+    background: radial-gradient(50% 60% at 50% 0%, rgba(240,185,11,.22), transparent 70%); }
+  .team { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 8px 0 28px; }
+  .member { display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border-radius: 980px;
+    background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+    transition: transform .1s ease-out; }
+  .member:active { transform: scale(.97); }
+  .member img { width: 36px; height: 36px; border-radius: 50%; display: block; }
+  .member b { display: block; font-size: 14px; line-height: 1.2; letter-spacing: -.005em; }
+  .member small { display: block; font-size: 12px; color: var(--muted); line-height: 1.2; }
+  .eyebrow { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--accent-ink); background: var(--accent); padding: 4px 10px; border-radius: 980px; margin-bottom: 18px; }
+  @media (max-width: 420px) { .eyebrow { font-size: 10.5px; letter-spacing: .03em; padding: 4px 9px; } }
+  h1 { font-size: clamp(40px, 8.4vw, 84px); line-height: 1.04; letter-spacing: -.035em; font-weight: 700; margin: 0 auto 18px; max-width: 14ch; }
+  h1 span { background: linear-gradient(90deg, #f0b90b, #f8d33a 45%, #e7a500); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: clamp(18px, 2.4vw, 22px); line-height: 1.45; letter-spacing: -.01em; color: var(--muted); max-width: 40ch; margin: 0 auto 28px; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+  /* ── Secciones ─────────────────────────────────────────────── */
+  section { padding: 56px 0; }
+  .section-head { text-align: center; margin-bottom: 28px; }
+  h2 { font-size: clamp(30px, 5.2vw, 52px); line-height: 1.08; letter-spacing: -.028em; font-weight: 700; margin: 0 0 10px; }
+  .sub { color: var(--muted); font-size: clamp(16px, 2vw, 19px); max-width: 52ch; margin: 0 auto; letter-spacing: -.005em; }
+
+  /* ── Cards (resorte + spotlight que sigue al puntero) ──────── */
+  .grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 680px) { .grid.two { grid-template-columns: repeat(2, 1fr); } .grid.three { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 980px) { .grid.three { grid-template-columns: repeat(3, 1fr); } }
+  .reveal { opacity: 0; transform: translateY(28px) scale(.985);
+    transition: opacity .8s var(--spring), transform .8s var(--spring); transition-delay: calc(var(--i, 0) * 80ms); }
+  .reveal.in { opacity: 1; transform: none; }
+  .card { position: relative; height: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 22px;
+    padding: 24px; box-shadow: var(--shadow); overflow: hidden; transform-style: preserve-3d; will-change: transform; }
+  .card::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s ease;
+    background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), rgba(240,185,11,.16), transparent 45%); }
+  .card:hover::before { opacity: 1; }
+  .card .icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: var(--chip); margin-bottom: 14px; }
+  .card h3 { font-size: 21px; line-height: 1.2; letter-spacing: -.018em; margin: 0 0 6px; }
+  .card p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
+
+  /* ── Precios en vivo ───────────────────────────────────────── */
+  .live { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--up); position: relative; }
+  .dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--up); opacity: 0; animation: ping 1.8s ease-out infinite; }
+  @keyframes ping { 0% { transform: scale(.6); opacity: .7; } 100% { transform: scale(1.6); opacity: 0; } }
+  .quote .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+  .quote .tk { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+  .quote .nm { font-size: 19px; font-weight: 600; letter-spacing: -.015em; line-height: 1.25; }
+  .quote .px { font-size: 40px; font-weight: 700; letter-spacing: -.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .quote .px small { font-size: 15px; font-weight: 600; color: var(--muted); letter-spacing: 0; margin-left: 4px; }
+  .chg { display: inline-block; font-size: 13px; font-weight: 600; padding: 3px 9px; border-radius: 980px; font-variant-numeric: tabular-nums; }
+  .chg.up { color: var(--up); background: color-mix(in srgb, var(--up) 12%, transparent); }
+  .chg.down { color: var(--down); background: color-mix(in srgb, var(--down) 12%, transparent); }
+  .meta { font-size: 12px; color: var(--muted); margin: 6px 0 16px; }
+  .toks { display: grid; gap: 8px; }
+  .tok { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--bg-2); font-size: 14px; }
+  .tok b { font-weight: 600; }
+  .tok span { color: var(--muted); font-size: 12px; }
+  .tok .r { text-align: right; font-variant-numeric: tabular-nums; }
+  .skeleton { height: 230px; border-radius: 22px; background: linear-gradient(100deg, var(--surface) 30%, var(--bg-2) 50%, var(--surface) 70%);
+    background-size: 300% 100%; animation: shimmer 1.6s linear infinite; border: 1px solid var(--border); }
+  @keyframes shimmer { to { background-position: -150% 0; } }
+
+  /* ── Probar ────────────────────────────────────────────────── */
+  .try { max-width: 760px; margin: 0 auto; }
+  form { display: flex; gap: 8px; }
+  input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 14px 18px; border-radius: 980px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+  input:focus { outline: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 1px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; justify-content: center; }
+  .chip { font: inherit; font-size: 14px; font-weight: 500; padding: 7px 14px; border-radius: 980px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); cursor: pointer; transition: transform .1s ease-out; }
+  .chip:active { transform: scale(.96); }
+  .result { margin-top: 18px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.6; min-height: 72px; }
+  .result.empty { color: var(--muted); }
+  .result.error { color: var(--down); }
+  .result strong { font-weight: 650; }
+  .result code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; background: var(--chip); padding: 1px 6px; border-radius: 6px; }
+
+  /* ── Telegram ──────────────────────────────────────────────── */
+  .tg-wrap { display: grid; gap: 32px; align-items: center; }
+  @media (min-width: 900px) { .tg-wrap { grid-template-columns: 1.05fr .95fr; } }
+  .tg-copy h2 { text-align: left; }
+  .tg-copy .sub { margin: 0 0 22px; text-align: left; }
+  .handle { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 15px; padding: 2px 8px; border-radius: 8px; background: var(--chip); }
+  .steps { list-style: none; padding: 0; margin: 0 0 26px; display: grid; gap: 12px; }
+  .steps li { display: flex; gap: 12px; align-items: baseline; color: var(--muted); }
+  .steps b { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; color: #fff; background: var(--tg); }
+  .phone { max-width: 380px; width: 100%; margin: 0 auto; border-radius: 36px; padding: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .phone-top { display: flex; align-items: center; gap: 10px; padding: 6px 8px 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+  .phone-top .av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); font-size: 18px; }
+  .phone-top b { display: block; font-size: 15px; }
+  .phone-top small { color: var(--muted); font-size: 12px; }
+  .chat { display: grid; gap: 8px; min-height: 360px; align-content: start; }
+  .msg { max-width: 86%; padding: 9px 13px; border-radius: 18px; font-size: 14px; line-height: 1.45; white-space: pre-line;
+    opacity: 0; transform: translateY(10px) scale(.98); transition: opacity .45s var(--spring), transform .45s var(--spring); }
+  .msg.show { opacity: 1; transform: none; }
+  .msg.me { justify-self: end; background: var(--tg); color: #fff; border-bottom-right-radius: 6px; }
+  .msg.bot { justify-self: start; background: var(--bg-2); border-bottom-left-radius: 6px; }
+  .kb { display: flex; gap: 6px; margin-top: 8px; }
+  .kb span { flex: 1; text-align: center; font-size: 13px; font-weight: 600; padding: 7px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); }
+  .note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 10px; }
+
+  /* ── API ───────────────────────────────────────────────────── */
+  pre { margin: 0; background: var(--code); border-radius: 16px; padding: 18px; overflow-x: auto; font-size: 13px; line-height: 1.6; border: 1px solid var(--border); }
   code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  ul { padding-left: 20px; margin: 0; color: var(--muted); }
-  a { color: inherit; text-decoration-color: var(--accent); text-underline-offset: 3px; }
-  footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
-  .row { display: flex; flex-wrap: wrap; gap: 16px; }
+
+  footer { padding: 40px 0 56px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+  footer .row { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: center; }
+  footer a:hover { color: var(--text); }
+
+  /* ── Accesibilidad ─────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal, .msg { transform: none !important; transition: opacity .25s ease; transition-delay: 0s; }
+    .dot::after, .skeleton { animation: none; }
+    .btn:active, .chip:active, .member:active { transform: none; }
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    .nav { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; border-bottom-color: var(--border); }
+  }
+  @media (prefers-contrast: more) {
+    :root { --border: currentColor; --muted: var(--text); }
+  }
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <span class="badge">BNB Hack · Tokenized Stocks</span>
-    <h1>Primera Acción 🇧🇴</h1>
-    <p>Tu primera acción de Wall Street en BNB Chain, en español. Precio en bolsa en tiempo real, tokens de Ondo y bStocks, y análisis con IA.</p>
+<nav class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><i>📈</i>Primera Acción</a>
+    <div class="links">
+      <a href="#precios">Precios</a>
+      <a href="#probar">Probar</a>
+      <a href="#como">Cómo funciona</a>
+      <a href="#telegram">Telegram</a>
+      <a href="#agentes">Para agentes</a>
+    </div>
+    <a class="btn tg small" href="https://t.me/TuPrimeraAccionBot" target="_blank" rel="noopener">Abrir bot</a>
+  </div>
+</nav>
+
+<main id="top">
+  <header class="hero">
+    <div class="wrap">
+      <div class="team" aria-label="Equipo">
+        <a class="member" href="https://github.com/invertilo" target="_blank" rel="noopener">
+          <img src="https://avatars.githubusercontent.com/u/227039846?v=4&s=96" alt="" width="36" height="36" />
+          <span><b>Vinicius</b><small>@invertilo</small></span>
+        </a>
+        <a class="member" href="https://github.com/alejondr3" target="_blank" rel="noopener">
+          <img src="https://avatars.githubusercontent.com/u/239358124?v=4&s=96" alt="" width="36" height="36" />
+          <span><b>Alejandro Mendoza</b><small>@alejondr3</small></span>
+        </a>
+        <a class="member" href="https://github.com/jasiiid" target="_blank" rel="noopener">
+          <img src="https://avatars.githubusercontent.com/u/334227120?v=4&s=96" alt="" width="36" height="36" />
+          <span><b>Jasid Moron</b><small>@jasiiid</small></span>
+        </a>
+      </div>
+      <div><span class="eyebrow">BNB Hack · Tokenized Stocks · Santa Cruz 🇧🇴</span></div>
+      <h1>Tu primera acción de <span>Wall Street</span>.</h1>
+      <p class="lead">Compra acciones tokenizadas de Apple, NVIDIA o Tesla con USDT, desde Telegram y en español. Con el precio real de la bolsa y confirmación antes de cada operación.</p>
+      <div class="ctas">
+        <a class="btn tg" href="https://t.me/TuPrimeraAccionBot" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.94 4.3 18.7 19.6c-.24 1.08-.88 1.35-1.79.84l-4.94-3.64-2.38 2.3c-.26.26-.49.48-1 .48l.36-5.04 9.17-8.29c.4-.36-.09-.55-.62-.2L6.16 13.2l-4.88-1.53c-1.06-.33-1.08-1.06.22-1.57L20.6 2.74c.88-.33 1.65.2 1.34 1.56Z"/></svg>
+          Abrir @TuPrimeraAccionBot
+        </a>
+        <a class="btn ghost" href="#probar">Probar el análisis</a>
+      </div>
+    </div>
   </header>
 
-  <form id="f">
-    <input id="q" name="prompt" maxlength="300" autocomplete="off" placeholder="Ej: NVDA 25 · analiza apple · ¿cómo viene tesla?" aria-label="Consulta" />
-    <button id="go" type="submit">Analizar</button>
-  </form>
-  <div class="chips">
-    <button class="chip" type="button" data-q="NVDA 25">NVDA 25</button>
-    <button class="chip" type="button" data-q="analiza apple">analiza apple</button>
-    <button class="chip" type="button" data-q="TSLA">TSLA</button>
-    <button class="chip" type="button" data-q="SPY">S&amp;P 500</button>
-    <button class="chip" type="button" data-q="info de mercado libre">Mercado Libre</button>
-  </div>
-
-  <div id="out" class="card empty" aria-live="polite">El resultado aparece acá. Es información, no una recomendación de inversión.</div>
-
-  <h2>Úsalo desde Telegram</h2>
-  <p id="tg">Compra y vende con USDT desde el bot, con confirmación antes de cada operación.</p>
-
-  <h2>Úsalo desde otro agente</h2>
-  <pre><code id="curl">curl -X POST /api/analyze -H 'Content-Type: application/json' -d '{"prompt":"NVDA 25"}'</code></pre>
-
-  <footer>
-    <div class="row">
-      <a href="https://github.com/invertilo/bnb-builder-day">GitHub</a>
-      <span>Hecho en Santa Cruz por <a href="https://github.com/invertilo">@invertilo</a>, <a href="https://github.com/alejondr3">@alejondr3</a> y <a href="https://github.com/jasiiid">@jasiiid</a></span>
+  <section id="precios">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <h2>La bolsa y BNB Chain, lado a lado.</h2>
+        <p class="sub">Precio de la acción en tiempo real (incluye pre y post mercado) frente a cada token de Ondo y bStocks. <span class="live"><span class="dot"></span><span id="upd">Actualizando…</span></span></p>
+      </div>
+      <div class="grid three" id="quotes">
+        <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+      </div>
     </div>
-    <p>Proyecto experimental de hackathon. No es asesoría financiera.</p>
-  </footer>
+  </section>
+
+  <section id="probar">
+    <div class="wrap try">
+      <div class="section-head reveal">
+        <h2>Pregúntale al agente.</h2>
+        <p class="sub">Escribe un ticker, un monto o una pregunta en español. Responde con datos reales; no es una recomendación de inversión.</p>
+      </div>
+      <div class="reveal" style="--i:1">
+        <div class="card tilt" data-tilt="2">
+          <form id="f">
+            <input id="q" maxlength="300" autocomplete="off" placeholder="Ej: NVDA 25 · analiza apple · ¿cómo viene tesla?" aria-label="Consulta" />
+            <button class="btn tg" id="go" type="submit">Analizar</button>
+          </form>
+          <div class="chips">
+            <button class="chip" type="button" data-q="analiza nvidia">analiza nvidia</button>
+            <button class="chip" type="button" data-q="AAPL 25">AAPL 25</button>
+            <button class="chip" type="button" data-q="¿cómo viene tesla?">¿cómo viene tesla?</button>
+            <button class="chip" type="button" data-q="SPY">S&amp;P 500</button>
+            <button class="chip" type="button" data-q="info de mercado libre">Mercado Libre</button>
+          </div>
+          <div id="out" class="result empty" aria-live="polite">El resultado aparece acá.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="como">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <h2>Simple por fuera. Cuidadoso por dentro.</h2>
+        <p class="sub">Todo lo que necesitas para invertir en acciones tokenizadas, sin pelearte con wallets, DEX ni slippage.</p>
+      </div>
+      <div class="grid three">
+        <div class="reveal" style="--i:0"><article class="card tilt"><div class="icon">🏛️</div><h3>Precio real de la bolsa</h3><p>Yahoo Finance en tiempo real, con pre y post mercado, comparado con el precio onchain de cada token.</p></article></div>
+        <div class="reveal" style="--i:1"><article class="card tilt"><div class="icon">🧠</div><h3>Análisis con IA</h3><p>DeepSeek vía OpenRouter explica cada acción con datos reales. Si la IA no responde, el agente escribe el análisis con sus propias reglas.</p></article></div>
+        <div class="reveal" style="--i:2"><article class="card tilt"><div class="icon">⚖️</div><h3>El mejor emisor</h3><p>Si la acción existe en Ondo y en bStocks, cotiza en los dos y elige el que da mejor precio frente a la bolsa.</p></article></div>
+        <div class="reveal" style="--i:3"><article class="card tilt"><div class="icon">🧺</div><h3>Canastas y DCA</h3><p>Arma tu canasta (IA, chips, índices), invierte en ella de una vez y programa compras periódicas que siempre te confirma.</p></article></div>
+        <div class="reveal" style="--i:4"><article class="card tilt"><div class="icon">🛡️</div><h3>Nada sin tu confirmación</h3><p>Simulación, límites por operación y por día, slippage máximo y aviso si el precio onchain se aleja de la bolsa.</p></article></div>
+        <div class="reveal" style="--i:5"><article class="card tilt"><div class="icon">🤖</div><h3>Hecho para agentes</h3><p>Agente de BNB Agent Studio con identidad ERC-8004 y una API abierta para que otros agentes de IA usen el análisis.</p></article></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="telegram">
+    <div class="wrap tg-wrap">
+      <div class="tg-copy reveal">
+        <h2>Invierte desde Telegram.</h2>
+        <p class="sub">Habla con <span class="handle">@TuPrimeraAccionBot</span> como le hablarías a un amigo. Él cotiza, simula y te pide confirmación antes de mover un solo USDT.</p>
+        <ol class="steps">
+          <li><b>1</b><span>Abre el bot y escribe <strong>/start</strong>.</span></li>
+          <li><b>2</b><span>Pregunta: <strong>precio de apple</strong> o <strong>analiza nvidia</strong>.</span></li>
+          <li><b>3</b><span>Compra: <strong>compra 25 de tesla</strong> y confirma con un toque.</span></li>
+        </ol>
+        <a class="btn tg" href="https://t.me/TuPrimeraAccionBot" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.94 4.3 18.7 19.6c-.24 1.08-.88 1.35-1.79.84l-4.94-3.64-2.38 2.3c-.26.26-.49.48-1 .48l.36-5.04 9.17-8.29c.4-.36-.09-.55-.62-.2L6.16 13.2l-4.88-1.53c-1.06-.33-1.08-1.06.22-1.57L20.6 2.74c.88-.33 1.65.2 1.34 1.56Z"/></svg>
+          Abrir @TuPrimeraAccionBot
+        </a>
+      </div>
+      <div class="reveal" style="--i:1">
+        <div class="phone tilt" data-tilt="3" id="phone">
+          <div class="phone-top"><div class="av">📈</div><div><b>Primera Acción</b><small>@TuPrimeraAccionBot · bot</small></div></div>
+          <div class="chat" id="chat">
+            <div class="msg me">compra 25 de apple</div>
+            <div class="msg bot">🧾 <strong>Comprar 25,00 USDT de AAPL</strong>
+🟢 AAPLB (bStocks) ≈ 0,0749 tokens
+precio 333,70 USDT · −0,03% vs bolsa
+🌙 Bolsa cerrada (fin de semana)
+✅ Chequeos previos OK. ¿Confirmas?<div class="kb"><span>✅ Confirmar</span><span>✖️ Cancelar</span></div></div>
+            <div class="msg me">✅ Confirmar</div>
+            <div class="msg bot">✅ Compraste AAPLB por 25,00 USDT — ver transacción</div>
+          </div>
+          <p class="note">Ejemplo ilustrativo: la cotización y la ruta varían.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="agentes">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <h2>Una API para otros agentes.</h2>
+        <p class="sub">El mismo análisis pre-compra que vende nuestro agente de BNB Agent Studio, abierto por HTTP.</p>
+      </div>
+      <div class="reveal" style="--i:1"><pre><code id="curl">curl -X POST /api/analyze -H 'Content-Type: application/json' -d '{"prompt":"NVDA 25"}'</code></pre></div>
+    </div>
+  </section>
 </main>
+
+<footer>
+  <div class="wrap row">
+    <span>Hecho en Santa Cruz por <a href="https://github.com/invertilo">@invertilo</a>, <a href="https://github.com/alejondr3">@alejondr3</a> y <a href="https://github.com/jasiiid">@jasiiid</a> · <a href="https://github.com/invertilo/bnb-builder-day">GitHub</a></span>
+    <span>Proyecto experimental de hackathon. No es asesoría financiera.</span>
+  </div>
+</footer>
+
 <script>
-  const out = document.getElementById("out");
-  const q = document.getElementById("q");
-  const go = document.getElementById("go");
-  document.getElementById("curl").textContent =
-    "curl -X POST " + location.origin + "/api/analyze -H 'Content-Type: application/json' -d '{\\"prompt\\":\\"NVDA 25\\"}'";
+(function () {
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var fine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
-  const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  // Markdown de Telegram → HTML (después de escapar): *negrita*, _cursiva_, \`código\` y links https.
-  const md = (s) => esc(s)
-    .replace(/\\[([^\\]]+)\\]\\((https:\\/\\/[^)\\s]+)\\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-    .replace(/\\*([^*\\n]+)\\*/g, "<strong>$1</strong>")
-    .replace(/(^|[\\s(])_([^_\\n]+)_/g, "$1<em>$2</em>")
-    .replace(/\`([^\`\\n]+)\`/g, "<code>$1</code>");
+  // Barra: borde inferior solo cuando hay contenido debajo (efecto de borde de scroll).
+  var nav = document.getElementById("nav");
+  function onScroll() { nav.classList.toggle("scrolled", window.scrollY > 8); }
+  window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
 
-  async function run(prompt) {
-    if (!prompt.trim()) return;
-    q.value = prompt;
-    go.disabled = true;
-    out.className = "card empty";
-    out.textContent = "Consultando la bolsa y BNB Chain…";
-    try {
-      const res = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error " + res.status);
-      out.className = "card";
-      out.innerHTML = md(data.result);
-    } catch (err) {
-      out.className = "card error";
-      out.textContent = err.message;
-    } finally {
-      go.disabled = false;
+  // Entradas escalonadas al entrar en pantalla.
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+  }, { rootMargin: "0px 0px -8% 0px" });
+  function observe(root) { (root || document).querySelectorAll(".reveal:not(.in)").forEach(function (el) { io.observe(el); }); }
+  observe();
+
+  // Resorte críticamente amortiguado (damping 1.0, response 0.35 s): parte del valor actual, es interrumpible.
+  function Spring(response, damping) {
+    this.k = Math.pow(2 * Math.PI / response, 2); this.c = 4 * Math.PI * damping / response;
+    this.x = 0; this.v = 0; this.target = 0;
+  }
+  Spring.prototype.step = function (dt) {
+    var a = -this.k * (this.x - this.target) - this.c * this.v;
+    this.v += a * dt; this.x += this.v * dt;
+    return Math.abs(this.x - this.target) > 0.001 || Math.abs(this.v) > 0.001;
+  };
+
+  function tilt(card) {
+    var max = Number(card.dataset.tilt || 6);
+    var rx = new Spring(0.35, 1), ry = new Spring(0.35, 1), s = new Spring(0.3, 1);
+    s.x = 1; s.target = 1;
+    var running = false, last = 0;
+    function frame(t) {
+      var dt = Math.min(0.032, (t - last) / 1000 || 0.016); last = t;
+      var a = rx.step(dt), b = ry.step(dt), c = s.step(dt);
+      card.style.transform = "perspective(900px) rotateX(" + rx.x.toFixed(3) + "deg) rotateY(" + ry.x.toFixed(3) + "deg) scale(" + s.x.toFixed(4) + ")";
+      if (a || b || c) requestAnimationFrame(frame); else running = false;
     }
+    function kick() { if (!running) { running = true; last = performance.now(); requestAnimationFrame(frame); } }
+    card.addEventListener("pointermove", function (e) {
+      var r = card.getBoundingClientRect();
+      var px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+      card.style.setProperty("--mx", (px * 100).toFixed(1) + "%");
+      card.style.setProperty("--my", (py * 100).toFixed(1) + "%");
+      ry.target = (px - 0.5) * 2 * max; rx.target = -(py - 0.5) * 2 * max; kick();
+    });
+    card.addEventListener("pointerleave", function () { rx.target = 0; ry.target = 0; s.target = 1; kick(); });
+    card.addEventListener("pointerdown", function () { s.target = 0.985; kick(); });
+    card.addEventListener("pointerup", function () { s.target = 1; kick(); });
+  }
+  function enableTilt(root) {
+    if (reduce || !fine) return;
+    (root || document).querySelectorAll(".tilt:not([data-tilted])").forEach(function (c) { c.dataset.tilted = "1"; tilt(c); });
+  }
+  enableTilt();
+
+  // Utilidades de formato (es-BO, coma decimal).
+  function num(n, d) { return Number(n).toLocaleString("es-BO", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function signed(n) { return (n > 0 ? "+" : n < 0 ? "−" : "") + num(Math.abs(n), 2) + "%"; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  var ISSUER = { ondo: "Ondo", bstocks: "bStocks", xstocks: "xStocks" };
+  var SESSION = { regular: "en vivo", pre: "pre-mercado", post: "post-mercado", closed: "último precio", unknown: "último precio" };
+
+  // Número que se desliza al nuevo valor (entrada no gestual: duración fija, ease-out).
+  function tween(el, to, d) {
+    var from = parseFloat(el.dataset.v || to);
+    el.dataset.v = to;
+    if (reduce || from === to) { el.textContent = num(to, d); return; }
+    var t0 = performance.now(), dur = 700;
+    (function f(t) {
+      var p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = num(from + (to - from) * e, d);
+      if (p < 1) requestAnimationFrame(f);
+    })(t0);
   }
 
-  document.getElementById("f").addEventListener("submit", (e) => { e.preventDefault(); run(q.value); });
-  document.querySelectorAll("[data-q]").forEach((b) => b.addEventListener("click", () => run(b.dataset.q)));
+  var grid = document.getElementById("quotes"), upd = document.getElementById("upd");
+  function card(item, i) {
+    var s = item.stock, chg = s && s.dayChangePct != null ? s.dayChangePct : null;
+    var toks = item.tokens.map(function (t) {
+      var g = t.gapPct == null ? "" : signed(t.gapPct) + " vs bolsa";
+      return '<div class="tok"><div><b>' + esc(t.symbol) + "</b> <span>" + esc(ISSUER[t.issuer] || t.issuer) + (t.tradable ? "" : " · pausado") +
+        '</span></div><div class="r"><b>' + num(t.price, 2) + " USDT</b><br><span>" + g + "</span></div></div>";
+    }).join("");
+    return '<div class="reveal" style="--i:' + i + '"><article class="card quote tilt" data-tk="' + esc(item.ticker) + '">' +
+      '<div class="top"><div><div class="tk">' + esc(item.ticker) + '</div><div class="nm">' + esc(item.name) + "</div></div>" +
+      (chg == null ? "" : '<span class="chg ' + (chg >= 0 ? "up" : "down") + '">' + signed(chg) + "</span>") + "</div>" +
+      '<div class="px"><span class="v" data-v="' + (s ? s.price : 0) + '">' + (s ? num(s.price, 2) : "—") + "</span><small>USD</small></div>" +
+      '<div class="meta">' + (s ? "En bolsa · " + (SESSION[s.session] || s.session) + " · " + esc(s.source) : "Sin precio de bolsa ahora") + "</div>" +
+      '<div class="toks">' + toks + "</div></article></div>";
+  }
+  function load() {
+    fetch("/api/quotes").then(function (r) { return r.json(); }).then(function (data) {
+      var items = data.items || [];
+      if (!items.length) { upd.textContent = "Sin datos ahora"; return; }
+      var existing = grid.querySelectorAll(".quote");
+      if (existing.length === items.length) {
+        items.forEach(function (it) {
+          var c = grid.querySelector('.quote[data-tk="' + it.ticker + '"] .v');
+          if (c && it.stock) tween(c, it.stock.price, 2);
+        });
+      } else {
+        grid.innerHTML = items.map(card).join("");
+        observe(grid); enableTilt(grid);
+      }
+      upd.textContent = "Actualizado " + new Date(data.updatedAt).toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }).catch(function () { upd.textContent = "No pude actualizar"; });
+  }
+  load(); setInterval(load, 30000);
 
-  fetch("/api/info").then((r) => r.json()).then((info) => {
-    if (info.telegram) {
-      const user = String(info.telegram).replace(/^@/, "");
-      document.getElementById("tg").innerHTML =
-        'Compra y vende con USDT desde <a href="https://t.me/' + encodeURIComponent(user) + '">@' + esc(user) + "</a>, con confirmación antes de cada operación.";
-    }
-  }).catch(() => {});
+  // Probar el análisis.
+  var out = document.getElementById("out"), q = document.getElementById("q"), go = document.getElementById("go");
+  document.getElementById("curl").textContent = "curl -X POST " + location.origin + "/api/analyze -H 'Content-Type: application/json' -d '{\"prompt\":\"NVDA 25\"}'";
+  var bt = String.fromCharCode(96); // backtick, sin escribirlo dentro de String.raw
+  var tick = new RegExp(bt + "([^" + bt + "\\n]+)" + bt, "g");
+  function md(s) {
+    return esc(s)
+      .replace(/\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>")
+      .replace(/(^|[\s(])_([^_\n]+)_/g, "$1<em>$2</em>")
+      .replace(tick, "<code>$1</code>");
+  }
+  function run(prompt) {
+    if (!prompt.trim()) return;
+    q.value = prompt; go.disabled = true;
+    out.className = "result empty"; out.textContent = "Consultando la bolsa y BNB Chain…";
+    fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: prompt }) })
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || "Error " + r.status); return d; }); })
+      .then(function (d) { out.className = "result"; out.innerHTML = md(d.result); })
+      .catch(function (e) { out.className = "result error"; out.textContent = e.message; })
+      .then(function () { go.disabled = false; });
+  }
+  document.getElementById("f").addEventListener("submit", function (e) { e.preventDefault(); run(q.value); });
+  document.querySelectorAll("[data-q]").forEach(function (b) { b.addEventListener("click", function () { run(b.dataset.q); }); });
+
+  // Conversación de ejemplo: los mensajes aparecen en secuencia cuando el teléfono entra en pantalla.
+  var msgs = document.querySelectorAll("#chat .msg");
+  if (reduce) { msgs.forEach(function (m) { m.classList.add("show"); }); }
+  else {
+    var shown = false;
+    new IntersectionObserver(function (entries, obs) {
+      if (shown || !entries[0].isIntersecting) return;
+      shown = true; obs.disconnect();
+      msgs.forEach(function (m, i) { setTimeout(function () { m.classList.add("show"); }, 300 + i * 900); });
+    }, { threshold: 0.4 }).observe(document.getElementById("phone"));
+  }
+})();
 </script>
 </body>
 </html>`;
+
+/**
+ * Bun y esbuild reescriben los caracteres no ASCII (tildes, emojis) como \uXXXX o \u{XXXXX} al transpilar, y dentro de
+ * String.raw esos escapes quedarían como texto literal. Los decodificamos acá (en Node no hay nada que cambiar).
+ * Por eso el HTML/JS de arriba no debe usar secuencias \u propias.
+ */
+export const PAGE_HTML = RAW_PAGE.replace(/\\u\{([0-9a-fA-F]+)\}|\\u([0-9a-fA-F]{4})/g, (_m, astral?: string, bmp?: string) =>
+  astral ? String.fromCodePoint(parseInt(astral, 16)) : String.fromCharCode(parseInt(bmp!, 16)),
+);

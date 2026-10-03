@@ -1,10 +1,13 @@
 import { timingSafeEqual } from "node:crypto";
 import { PAGE_HTML } from "./page.js";
+import { parseTickers } from "./quotes.js";
 
 export interface HttpDeps {
   /** Análisis pre-compra (el mismo trabajo que vende el agente de Agent Studio). */
   analyze(prompt: string): Promise<string>;
   info(): Promise<Record<string, unknown>>;
+  /** Cards de precios en vivo para la landing (sin LLM). */
+  quotes(tickers: string[]): Promise<unknown[]>;
   /** null si no hay TELEGRAM_BOT_TOKEN. */
   handleTelegramUpdate: ((update: unknown) => Promise<void>) | null;
   /** null si no hay bot (el DCA manda mensajes por Telegram). */
@@ -104,6 +107,14 @@ export function createHandler(deps: HttpDeps): (req: Request) => Promise<Respons
       }
       if (pathname === "/health") return json({ status: "ok" });
       if (pathname === "/api/info" && req.method === "GET") return json(await deps.info(), 200, CORS);
+      if (pathname === "/api/quotes" && req.method === "GET") {
+        const tickers = parseTickers(new URL(req.url).searchParams.get("t"), ["NVDA", "AAPL", "TSLA"]);
+        // Cache en el CDN de Vercel: muchas visitas no multiplican las consultas a Binance y Yahoo.
+        return json({ updatedAt: (deps.now ?? (() => new Date()))().toISOString(), items: await deps.quotes(tickers) }, 200, {
+          ...CORS,
+          "Cache-Control": "public, s-maxage=20, stale-while-revalidate=40",
+        });
+      }
       if (pathname === "/api/analyze") {
         if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
         if (req.method === "GET" || req.method === "POST") return await analyze(req);

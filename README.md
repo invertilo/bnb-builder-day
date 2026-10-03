@@ -136,10 +136,12 @@ flowchart LR
 - [x] Agente de BNB Agent Studio en `studio/` con nuestro análisis en `runWork`, probado local con `bag dev` y `/x402` ([guía](docs/AGENT_STUDIO.md))
 - [x] CI (tests del bot + compilación del agente de Agent Studio) y Dockerfile para el bot
 - [x] Agente listo para **Vercel con runtime Bun**: webhook de Telegram, Upstash Redis, Vercel Cron, API `/api/analyze` y página de demo ([guía](docs/VERCEL.md))
-- [x] 112 tests automáticos
+- [x] 114 tests automáticos
 - [ ] Probar con la API key de Binance y una wallet con fondos (primera compra real en mainnet)
 - [ ] Deploy del agente de Agent Studio (trial de 48 h) y registro ERC-8004
-- [ ] Deploy en Vercel (cuenta del equipo) y demo en video
+- [x] Deploy en Vercel: https://primera-accion.vercel.app (landing con precios en vivo y análisis)
+- [ ] Bot de Telegram en producción (@TuPrimeraAccionBot): `npm run telegram:setup`
+- [ ] Demo en video
 - [ ] Reporte de Developer Experience ([`DX_LOG.md`](DX_LOG.md))
 
 ## Cómo correrlo
@@ -168,7 +170,7 @@ Sin las claves de Binance o sin wallet, el bot funciona en **modo solo lectura**
 ```bash
 npm run check NVDA 25   # diagnóstico: catálogo, precio en bolsa, IA, firma Binance, wallet y cotización (no ejecuta nada)
 npm run dev             # levanta el bot de Telegram
-npm test                # 112 tests
+npm test                # 114 tests
 ```
 
 Para operar, la wallet del agente necesita USDT (Ondo pide órdenes de ~20 USD como mínimo) y un poco de BNB para gas, en BNB Smart Chain.
