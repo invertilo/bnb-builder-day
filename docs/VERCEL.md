@@ -21,6 +21,15 @@ El agente corre en Vercel como una sola función con `Bun.serve()` (`src/server.
 
 El webhook responde enseguida para que Telegram no reintente mientras se ejecuta una compra (una orden RFQ puede tardar más de un minuto). El trabajo sigue en segundo plano con `waitUntil` de `@vercel/functions`, dentro del tiempo máximo de la función (300 s por defecto con Fluid compute).
 
+## Lo que hizo falta para que el preset de Bun funcione
+
+Lo encontramos en el primer deploy real (3 oct):
+
+- **`"framework": "bun"` en `vercel.json`.** Un proyecto creado con `vercel link` queda con el preset "Other" y busca una carpeta `public/`.
+- **Sin `"engines": { "node": … }` en `package.json`.** Si existe, Vercel lo prioriza sobre `bunVersion` y usa Node.
+- **`server.ts` en la raíz.** Vercel busca el punto de entrada en el orden `app`, `index`, `server`, `main` y después `src/app`, `src/index`, `src/server`, así que encontraba `src/app.ts` antes que `src/server.ts`. El `server.ts` de la raíz solo importa `src/server.ts`.
+- **TypeScript 6, no 7.** El builder (`@vercel/backends`) llama a `ts.sys.readFile`, que TypeScript 7 ya no expone.
+
 ## Deploy paso a paso
 
 1. **Proyecto en Vercel.** Importa el repo desde el dashboard (New Project → GitHub → `bnb-builder-day`) o usa la CLI:
@@ -28,7 +37,11 @@ El webhook responde enseguida para que Telegram no reintente mientras se ejecuta
    bunx vercel login
    bunx vercel link
    ```
-2. **Redis.** En el proyecto: Storage → Marketplace → **Upstash Redis** → Connect. Vercel agrega `KV_REST_API_URL` y `KV_REST_API_TOKEN`.
+2. **Redis.** Desde la CLI (plan gratis, sin pasar a pago al llegar al límite):
+   ```bash
+   bunx vercel integration add upstash/upstash-kv --plan free -m primaryRegion=iad1 -m autoUpgrade=false -m eviction=true --name primera-accion-redis --no-env-pull
+   ```
+   O en el dashboard: Storage → Marketplace → Upstash for Redis. Vercel agrega `KV_REST_API_URL` y `KV_REST_API_TOKEN`. Ojo: `autoUpgrade` viene en `true` por defecto.
 3. **Variables de entorno** (Settings → Environment Variables, entorno Production):
 
    | Variable | Obligatoria | Nota |

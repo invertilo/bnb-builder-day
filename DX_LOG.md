@@ -71,3 +71,10 @@ Notas crudas de la investigación de docs y paquetes. Son evidencia para el repo
 - El scaffold trae `zod ^3.25`; para compartir código con un proyecto en zod 4 hay que importar desde `zod/v4`.
 - `bag doctor` valida el bundle del deploy con esbuild (`zip bundle — esbuild dry run OK`), lo que viene bien para saber que el código externo empaqueta.
 - Con el agente sin fondos, `bag doctor` avisa que hacen falta ≥ 0,02 tBNB para el registro ERC-8004.
+
+**Vercel con runtime Bun (3 oct, primer deploy real)**
+- `"engines": {"node": ">=20"}` en `package.json` pisa a `bunVersion` de `vercel.json` sin error: solo avisa y usa Node. Después falla buscando `public/`.
+- Un proyecto creado con `vercel link --yes` queda con el preset "Other". Hubo que forzar `"framework": "bun"` en `vercel.json`.
+- El preset de Bun elige `src/app.ts` antes que `src/server.ts`, aunque la guía de Bun dice que el punto de entrada es `server.ts` o `src/server.ts`. Lo resolvimos con un `server.ts` en la raíz.
+- `@vercel/backends` falla con TypeScript 7 (`Cannot read properties of undefined (reading 'readFile')` en `ts.sys`). Bajamos a TypeScript 6.0.3.
+- `vercel integration add upstash/upstash-kv` deja `autoUpgrade=true` por defecto (pasa solo a plan pago) e instala guías de Upstash para IA en `.agents/` y `.claude/skills/` del proyecto sin avisar.

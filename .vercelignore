@@ -5,4 +5,12 @@
 /Dockerfile
 /.dockerignore
 /docs
+node_modules
+.env
+.env.*
+!.env.example
 *.log
+/.agents
+/.claude
+/skills-lock.json
+/.vercel

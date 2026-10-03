@@ -9,3 +9,9 @@ data/
 
 # Copia generada por npm run studio:sync (la fuente es src/)
 studio/app/agent/src/primera/
+# Vercel CLI (vínculo local del proyecto)
+.vercel
+# Guías de Upstash para asistentes de IA que instala `vercel integration add`
+.agents/
+.claude/skills/
+skills-lock.json
