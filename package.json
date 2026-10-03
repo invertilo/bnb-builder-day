@@ -15,7 +15,8 @@
     "wallet:new": "tsx src/scripts/new-wallet.ts",
     "studio:sync": "node scripts/studio-sync.mjs",
     "web": "bun run src/server.ts",
-    "webhook:set": "tsx src/scripts/set-webhook.ts"
+    "webhook:set": "tsx src/scripts/set-webhook.ts",
+    "build:vercel": "rm -rf dist && esbuild src/server.ts --bundle --platform=node --format=esm --target=es2022 --sourcemap --outfile=dist/server.js --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\""
   },
   "dependencies": {
     "@upstash/redis": "^1.39.0",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
+    "esbuild": "^0.28.2",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^5.0.3"

@@ -29,6 +29,7 @@ Lo encontramos en el primer deploy real (3 oct):
 - **Sin `"engines": { "node": … }` en `package.json`.** Si existe, Vercel lo prioriza sobre `bunVersion` y usa Node.
 - **`server.ts` en la raíz.** Vercel busca el punto de entrada en el orden `app`, `index`, `server`, `main` y después `src/app`, `src/index`, `src/server`, así que encontraba `src/app.ts` antes que `src/server.ts`. El `server.ts` de la raíz solo importa `src/server.ts`.
 - **TypeScript 6, no 7.** El builder (`@vercel/backends`) llama a `ts.sys.readFile`, que TypeScript 7 ya no expone.
+- **Un solo bundle con esbuild (`npm run build:vercel` → `dist/server.js`).** Si `dist/` tiene la salida de `tsc`, Vercel toma `dist/app.js` como handler, porque busca `app` antes que `server`. Además, el rastreo de archivos no incluía `@noble/hashes/esm/cryptoNode.js`, que Bun resuelve con la condición `node` (lo usa `viem`). Con un bundle único, en `dist/` solo queda `server.js` y no hay nada que resolver al ejecutarse.
 
 ## Deploy paso a paso
 

@@ -78,3 +78,5 @@ Notas crudas de la investigación de docs y paquetes. Son evidencia para el repo
 - El preset de Bun elige `src/app.ts` antes que `src/server.ts`, aunque la guía de Bun dice que el punto de entrada es `server.ts` o `src/server.ts`. Lo resolvimos con un `server.ts` en la raíz.
 - `@vercel/backends` falla con TypeScript 7 (`Cannot read properties of undefined (reading 'readFile')` en `ts.sys`). Bajamos a TypeScript 6.0.3.
 - `vercel integration add upstash/upstash-kv` deja `autoUpgrade=true` por defecto (pasa solo a plan pago) e instala guías de Upstash para IA en `.agents/` y `.claude/skills/` del proyecto sin avisar.
+- En producción, la función caía con `500 FUNCTION_INVOCATION_FAILED`. Los logs decían `Cannot find package '@noble/hashes' imported from …/@noble/hashes/esm/utils.js`: el rastreo de archivos no incluyó `esm/cryptoNode.js`, que Bun elige por la condición `node` de `exports`. El build había terminado "Ready" igual.
+- El builder usa `outDir` de `tsconfig` (`dist/`) como carpeta de salida y elige `dist/app.js` como handler, aunque el log dice "Using server.ts as the root entrypoint". Lo resolvimos con un bundle único de esbuild.
