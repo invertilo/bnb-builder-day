@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OpenAiCompatibleLlm, parseJsonLoose } from "./openai-compatible.js";
+import { OpenAiCompatibleLlm, parseJsonLoose, textOf } from "./openai-compatible.js";
 
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status });
 
@@ -10,7 +10,23 @@ describe("parseJsonLoose", () => {
   });
 });
 
+describe("textOf", () => {
+  it("acepta texto o lista de partes", () => {
+    expect(textOf("  hola ")).toBe("hola");
+    expect(textOf([{ type: "text", text: "ho" }, { type: "text", text: "la" }])).toBe("hola");
+    expect(textOf(null)).toBe("");
+  });
+});
+
 describe("OpenAiCompatibleLlm", () => {
+  it("respuesta vacía informa el finish_reason", async () => {
+    const llm = new OpenAiCompatibleLlm(
+      { baseUrl: "https://x/v1", apiKey: "k", model: "m" },
+      (async () => reply(200, { choices: [{ message: { content: "" }, finish_reason: "length" }] })) as unknown as typeof fetch,
+    );
+    await expect(llm.text("s", "hola")).rejects.toThrow("finish_reason: length");
+  });
+
   it("llama a /chat/completions con el modelo y el token", async () => {
     const calls: { url: string; body: Record<string, unknown>; auth: string }[] = [];
     const llm = new OpenAiCompatibleLlm(

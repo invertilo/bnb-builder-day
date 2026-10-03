@@ -10,8 +10,10 @@ export interface LlmOptions {
   timeoutMs?: number;
 }
 
+type ContentPart = { type?: string; text?: string };
+
 interface ChatResponse {
-  choices?: Array<{ message?: { content?: string | null } }>;
+  choices?: Array<{ message?: { content?: string | ContentPart[] | null }; finish_reason?: string | null }>;
   error?: { message?: string };
 }
 
@@ -39,7 +41,8 @@ export class OpenAiCompatibleLlm implements Llm {
         { role: "user", content: user },
       ],
       temperature: json ? 0 : 0.3,
-      max_tokens: json ? 300 : 600,
+      // Margen amplio: algunos modelos razonan antes de responder y consumen tokens del mismo límite.
+      max_tokens: json ? 800 : 1500,
     };
     if (json) body.response_format = { type: "json_object" };
 
@@ -55,9 +58,12 @@ export class OpenAiCompatibleLlm implements Llm {
       const hint = res.status === 503 ? " (¿el nombre del modelo coincide exactamente con el del proveedor?)" : "";
       throw new Error(`El LLM respondió ${res.status}: ${data.error?.message ?? res.statusText}${hint}`);
     }
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error("El LLM devolvió una respuesta vacía");
-    return content.trim();
+    const choice = data.choices?.[0];
+    const content = textOf(choice?.message?.content);
+    if (!content) {
+      throw new Error(`El LLM devolvió una respuesta vacía (finish_reason: ${choice?.finish_reason ?? "desconocido"})`);
+    }
+    return content;
   }
 
   private post(body: unknown): Promise<Response> {
@@ -68,6 +74,13 @@ export class OpenAiCompatibleLlm implements Llm {
       signal: AbortSignal.timeout(this.opts.timeoutMs ?? 25_000),
     });
   }
+}
+
+/** El contenido puede venir como texto o como lista de partes ({type:"text", text}). */
+export function textOf(content: string | ContentPart[] | null | undefined): string {
+  if (typeof content === "string") return content.trim();
+  if (Array.isArray(content)) return content.map((p) => p.text ?? "").join("").trim();
+  return "";
 }
 
 /** Acepta JSON envuelto en ```json … ``` o con texto alrededor. */

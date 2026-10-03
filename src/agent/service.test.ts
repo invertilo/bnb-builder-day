@@ -173,6 +173,27 @@ describe("PrimeraAccion", () => {
     expect(reply.text).toContain("dividendos");
   });
 
+  it("si la IA falla, el análisis igual responde con los datos reales", async () => {
+    const failing = new PrimeraAccion({
+      market,
+      trader,
+      llm: { text: async () => { throw new Error("vacío"); }, json: async () => ({ kind: "unknown" }) },
+      store: new FileStore(join(await mkdtemp(join(tmpdir(), "pa-")), "s.json")),
+      policy: { maxTradeUsd: 100, maxDailyUsd: 150, maxSlippageBps: 100, maxReferenceGapBps: 200 },
+      minTradeUsd: 1,
+      now,
+    });
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+      const reply = await failing.handle(STRANGER, "analiza apple", false);
+      expect(reply.text).toContain("En bolsa");
+      expect(reply.text).toContain("no está disponible");
+    } finally {
+      console.warn = warn;
+    }
+  });
+
   it("precio muestra la bolsa y cada token", async () => {
     const reply = await agent.handle(STRANGER, "precio de apple", false);
     expect(reply.text).toContain("En bolsa");

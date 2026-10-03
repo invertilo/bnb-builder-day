@@ -128,8 +128,13 @@ export class PrimeraAccion {
     if (!this.deps.llm || /^(¿)?qu[ée] es una acci[óo]n tokenizada\??$/i.test(question.trim())) {
       return { text: es.WHAT_IS_TOKENIZED };
     }
-    const answer = await this.deps.llm.text(EXPLAIN_PROMPT, question);
-    return { text: `${answer}\n\n_${es.DISCLAIMER}_` };
+    try {
+      const answer = await this.deps.llm.text(EXPLAIN_PROMPT, question);
+      return { text: `${answer}\n\n_${es.DISCLAIMER}_` };
+    } catch (err) {
+      console.warn("[explain] LLM:", (err as Error).message);
+      return { text: `No pude consultar a la IA ahora. Mientras tanto:\n\n${es.WHAT_IS_TOKENIZED}` };
+    }
   }
 
   private async resolveTokens(ticker: string): Promise<StockToken[]> {
@@ -176,8 +181,14 @@ export class PrimeraAccion {
       })),
     );
     const session = es.sessionLabel(usMarketSession(this.now()));
-    const analysis = await this.deps.llm.text(ANALYZE_PROMPT, `Acción: ${ticker}\nEstado de la bolsa: ${session}\nDatos: ${data}`);
-    return { text: `${card}\n\n🧠 *Análisis*\n${analysis}\n\n_${es.DISCLAIMER}_` };
+    try {
+      const analysis = await this.deps.llm.text(ANALYZE_PROMPT, `Acción: ${ticker}\nEstado de la bolsa: ${session}\nDatos: ${data}`);
+      return { text: `${card}\n\n🧠 *Análisis*\n${analysis}\n\n_${es.DISCLAIMER}_` };
+    } catch (err) {
+      // Si la IA falla, los datos reales igual sirven: no tumbamos la respuesta.
+      console.warn("[analyze] LLM:", (err as Error).message);
+      return { text: `${card}${facts ? `\n\n${facts}` : ""}\n\n_El análisis con IA no está disponible en este momento._` };
+    }
   }
 
   private async portfolioReply(): Promise<Reply> {
